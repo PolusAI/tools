@@ -1,0 +1,29 @@
+wf_image_processing___0__step__BbbcDownload___name: BBBC001
+wf_image_processing___0__step__BbbcDownload___outDir:
+  class: Directory
+  location: 0__step__BbbcDownload__outDir
+wf_image_processing___1__step__FileRenaming___filePattern: .*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif
+wf_image_processing___1__step__FileRenaming___mapDirectory: map
+wf_image_processing___1__step__FileRenaming___outDir:
+  class: Directory
+  location: 1__step__FileRenaming__outDir
+wf_image_processing___1__step__FileRenaming___outFilePattern: x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif
+wf_image_processing___2__step__OmeConverter___fileExtension: .ome.tif
+wf_image_processing___2__step__OmeConverter___filePattern: .*.tif
+wf_image_processing___2__step__OmeConverter___outDir:
+  class: Directory
+  location: 2__step__OmeConverter__outDir
+wf_image_processing___3__step__Montage___filePattern: d1_x00_y03_p{p:dd}_c0.ome.tif
+wf_image_processing___3__step__Montage___layout: p
+wf_image_processing___3__step__Montage___outDir:
+  class: Directory
+  location: 3__step__Montage__outDir
+wf_image_processing___4__step__ImageAssembler___outDir:
+  class: Directory
+  location: 4__step__ImageAssembler__outDir
+wf_image_processing___5__step__PrecomputeSlide___filePattern: .*.ome.tif
+wf_image_processing___5__step__PrecomputeSlide___imageType: Intensity
+wf_image_processing___5__step__PrecomputeSlide___outDir:
+  class: Directory
+  location: out
+wf_image_processing___5__step__PrecomputeSlide___pyramidType: Zarr
