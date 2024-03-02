@@ -188,7 +188,6 @@ class WorkflowStepOutput(BaseModel):
     """
 
     model_config = ConfigDict(populate_by_name=True)
-
     id_: StepIOId = Field(..., alias="id")
 
 
@@ -216,7 +215,7 @@ class WorkflowStepInput(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id_: StepIOId = Field(..., alias="id")
-    source: str  # TODO CHECK add typing for extra check if necessary.
+    source: Optional[str]
 
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
@@ -266,7 +265,7 @@ def filter_unused_optional(
     Trying to pass unset inputs will result in a cwl failure, so
     we need to strip them out.
     """
-    filtered_in_ = [input_ for input_ in in_ if input_.source != "UNSET"]
+    filtered_in_ = [input_ for input_ in in_ if input_.source is not None]
     return nxt(filtered_in_)
 
 
@@ -286,16 +285,16 @@ class WorkflowStep(BaseModel):
     A workflow step has an id so it can be referenced by other steps,
     or workflow ios.
     It has a list of inputs whose ids correspond to the process input ids they
-    are wrapping and describe to which workflow input/step output the connect.
+    are wrapping and describe to which workflow input/step outputs they connect.
     It has a list of outputs whose ids correspond to the process output ids they
-    are wrapping and describe to  which workflow output they connect.
+    are wrapping and describe to  which workflow inputs they connect.
     """
 
     # needed because of the reserved keyword are used in the model.
     model_config = ConfigDict(populate_by_name=True)
 
     id_: WorkflowStepId = Field(..., alias="id")
-    run: str
+    run: Union[str, "Process"]
     in_: WorkflowStepInputs = Field(..., alias="in")
     out: WorkflowStepOutputs = Field(...)
 
@@ -508,7 +507,7 @@ class Process(BaseModel):
         try:
             cwl_process = cwl_parser.load_document_by_uri(cwl_file)
         except CwlParserException:
-            raise BadCwlProcessFileError(cwl_file) from CwlParserException
+            raise BadCwlProcessFileError(cwl_file) from Exception
 
         yaml_cwl = cwl_parser.save(cwl_process)
 
@@ -526,43 +525,49 @@ class Process(BaseModel):
     @classmethod
     def load(
         cls,
-        cwl_file: Union[Path, str],
+        cwl_data: Union[Path, str, dict, "Process"],
         recursive: bool = False,
         context: Optional[dict] = None,
     ) -> "Process":
-        """Load a Process from a path or uri.
+        """Load a process (optionally recursively).
 
         Factory method for all subclasses.
-        We use the reference cwl parser to get a standardized description.
+        The process can be referenced to by a path or uri,
+        serialized as a dict or just be an existing model.
 
         Args:
-            cwl_file: Path to the cwl file to load or an URI describing
+            cwl_data: Path to the cwl file to load or an URI describing
         the resource location.
             recursive: If set to True, attempts to recursively load all
-        cwl files referenced.
+        cwl processes referenced.
             context: Collect all cwl models found.
 
         Returns:
             The process object.
+
+        NOTE We use the reference cwl parser implementation to get a
+        standardized description.
         """
-        # create a context is we did not received one.
+        # create a context if we did not received one.
         if context is None:
             context = {}
 
-        yaml_clt = cls._load(cwl_file)
-        process_class = yaml_clt["class"]
-        if process_class == "Workflow":
-            process = Workflow(**yaml_clt)
-            if recursive:
-                for step in process.steps:
-                    Process.load(step.run, recursive=recursive, context=context)
-            # NOTE for now we just load all references
-            # and check they are accessible.
-            # We could also perform extra validation if desired.
-        elif yaml_clt["class"] == "CommandLineTool":
-            process = CommandLineTool(**yaml_clt)
+        if isinstance(cwl_data, Process):
+            process = cwl_data
         else:
-            raise UnsupportedProcessClassError(process_class)
+            if isinstance(cwl_data, (Path, str)):
+                cwl_data = cls._load(cwl_data)
+            process_class = cwl_data["class"]
+            if process_class == "Workflow":
+                process = Workflow(**cwl_data)
+            elif cwl_data["class"] == "CommandLineTool":
+                process = CommandLineTool(**cwl_data)
+            else:
+                raise UnsupportedProcessClassError(process_class)
+
+        if isinstance(process, Workflow) and recursive:
+            for step in process.steps:
+                Process.load(step.run, recursive=recursive, context=context)
 
         context[process.id_] = process
         return process

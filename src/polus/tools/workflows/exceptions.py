@@ -62,6 +62,8 @@ class BadCwlProcessFileError(Exception):
 
     def __init__(self, cwl_file: Union[Path, str]) -> None:
         """Init BadCwlProcessFileError."""
+        if isinstance(cwl_file, Path):
+            cwl_file = cwl_file.as_posix()
         super().__init__(f"Invalid cwl file : {cwl_file}")
 
 

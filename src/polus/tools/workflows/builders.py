@@ -57,11 +57,10 @@ class StepBuilder:
         step_id = generate_default_step_id(process.name)
         run = process.id_
 
-        # TODO change. For now set source to "UNSET"
         inputs = [
             AssignableWorkflowStepInput(
                 id=input_.id_,
-                source="UNSET",
+                source=None,
                 type=self._promote_cwl_type(input_.type_)
                 if scatter and input_.id_ in scatter
                 else input_.type_,
@@ -93,7 +92,7 @@ class StepBuilder:
             inputs = inputs + [
                 AssignableWorkflowStepInput(
                     id=input_.id_,
-                    source="UNSET",
+                    source=None,
                     type=self._promote_cwl_type(
                         input_.type_,
                     )
@@ -265,7 +264,7 @@ class WorkflowBuilder:
             for input_ in step.in_:
                 # Only create workflows inputs and connect to them
                 # if step inputs are not already connected to another step output.
-                if input_.source != "UNSET":
+                if input_.source is not None:
                     continue
                 # Ignore unset optional inputs
                 # NOTE needed because the cwl standard does not allow for unset values.
@@ -417,7 +416,7 @@ class WorkflowBuilder:
         for step in steps:
             step.id_ = updated_step_ids[step.id_]
             for input_ in step.in_:
-                if input_.source != "UNSET":
+                if input_.source is not None:
                     (source_step_id, param_id) = input_.source.split("/")
                     input_.source = generate_cwl_source_repr(
                         updated_step_ids[source_step_id],

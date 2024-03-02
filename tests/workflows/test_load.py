@@ -30,6 +30,31 @@ def test_load_workflow(test_data_dir: Path, filename: str) -> None:
     Workflow.load(cwl_file)
 
 
+@pytest.mark.parametrize("filename", ["workflow3.cwl"])
+def test_load_workflow_recursively(test_data_dir: Path, filename: str) -> None:
+    """Test Workflow factory method."""
+    cwl_file = test_data_dir / filename
+    context = {}
+    Workflow.load(cwl_file, recursive=True, context=context)
+    assert len(context) == 3
+
+
+@pytest.mark.parametrize("filename", ["workflow3_inline.cwl"])
+def test_load_workflow_inlining(test_data_dir: Path, filename: str) -> None:
+    """Test Workflow factory method when definitions can be arbitrarily inlined."""
+    cwl_file = test_data_dir / filename
+
+    # loading inlined definitions
+    context = {}
+    workflow = Workflow.load(cwl_file, context=context)
+    assert len(context) == 1
+
+    # loading recursively inlined definitions
+    context = {}
+    Workflow.load(cwl_file, context=context, recursive=True)
+    assert len(context) == 3
+
+
 @pytest.mark.parametrize("filename", ["echo_string.cwl", "workflow5.cwl"])
 def test_load_process(test_data_dir: Path, filename: str) -> None:
     """Test Process factory method."""
@@ -37,11 +62,6 @@ def test_load_process(test_data_dir: Path, filename: str) -> None:
     Process.load(cwl_file)
 
 
-# TODO So cwlparser does not check the referenced clts,
-# It justs check the definition is valid at the first level.
-# So if we wanted to more validation, we would need to recursively pull all references.
-# NOTE we could provide a Context object to collect definition
-# instead of parsing clts over and over.
 @pytest.mark.parametrize("filename", ["workflow5.cwl"])
 def test_recursive_load_workflow(test_data_dir: Path, filename: str) -> None:
     """Test Recursive load of processes."""
