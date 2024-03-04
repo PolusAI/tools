@@ -25,16 +25,21 @@ from polus.tools.workflows.default_ids import generate_cwl_source_repr
 from polus.tools.workflows.exceptions import BadCwlProcessFileError
 from polus.tools.workflows.exceptions import IncompatibleTypeError
 from polus.tools.workflows.exceptions import IncompatibleValueError
+from polus.tools.workflows.exceptions import InvalidFormatError
 from polus.tools.workflows.exceptions import NotAFileError
 from polus.tools.workflows.exceptions import ScatterValidationError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
 from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 from polus.tools.workflows.exceptions import UnsupportedProcessClassError
 from polus.tools.workflows.requirements import ProcessRequirement
+from polus.tools.workflows.types import CWLBasicTypeEnum
 from polus.tools.workflows.types import CWLType
+from polus.tools.workflows.types import CWLValue
 from polus.tools.workflows.types import PythonValue
 from polus.tools.workflows.utils import directory_exists
 from polus.tools.workflows.utils import file_exists
+
+Expression = str
 
 
 class InputBinding(BaseModel):
@@ -99,6 +104,9 @@ class Parameter(BaseModel):
     optional: bool = Field(False, exclude=True)
     type_: CWLType = Field(..., alias="type")
 
+    # See https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
+    format_: Optional[Union[str, list[str], Expression]] = Field(None, alias="format")
+
     @field_validator("type_", mode="before")
     @classmethod
     # TODO CHECK type of optional
@@ -113,6 +121,14 @@ class Parameter(BaseModel):
                 return cls.transform_type(type_[1])
             raise UnexpectedTypeError(type_)
         return type_
+
+    def model_post_init(self, __context: Any) -> None:  # noqa
+        if self.format and (
+            not isinstance(self.type, CWLType(CWLBasicTypeEnum.FILE))
+            or not isinstance(self.type, CWLType(items=CWLBasicTypeEnum.FILE))
+        ):
+            msg = "format only allowed with File or array of File."
+            raise InvalidFormatError(msg)
 
 
 class InputParameter(Parameter):
@@ -154,19 +170,29 @@ class WorkflowOutputParameter(OutputParameter):
     output_source: str = Field(..., alias="outputSource")
 
 
+class LoadListingEnum(str, Enum):
+    """Desired behavior for loading listing."""
+
+    no_listing = "no_listing"
+    shallow_listing = "shallow_listing"
+    deep_listing = "deep_listing"
+
+
 class CommandInputParameter(InputParameter):
     """Command Line Tool input parameter."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     input_binding: Optional[CommandLineInputBinding] = Field(None, alias="inputBinding")
+    load_contents: Optional[bool] = Field(None, alias="loadContents")
+    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
+    default: Optional[CWLValue] = None
 
 
 class CommandOutputParameter(OutputParameter):
     """Command Line Tool output parameter."""
 
     model_config = ConfigDict(populate_by_name=True)
-
     output_binding: Optional[CommandLineOutputBinding] = Field(
         None,
         alias="outputBinding",
@@ -287,9 +313,6 @@ class ScatterMethodEnum(str, Enum):
     dotproduct = "dotproduct"
     nested_crossproduct = "nested_crossproduct"
     flat_crossproduct = "flat_crossproduct"
-
-
-Expression = str
 
 
 class WorkflowStep(BaseModel):

@@ -43,6 +43,10 @@ class IncompatibleValueError(Exception):
         )
 
 
+class InvalidFormatError(Exception):
+    """Raised if format is invalid."""
+
+
 class CannotParseAdditionalInputParamError(Exception):
     """Raised if the model for an additional input is not valid."""
 

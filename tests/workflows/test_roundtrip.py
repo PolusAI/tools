@@ -15,6 +15,10 @@ FILE_NAME = Path(__file__).stem
 OUTPUT_DIR, STAGING_DIR = configure_folders(FILE_NAME)
 
 
+def list_all_test_data(test_data_dir: Path):
+    test_data_dir
+
+
 # NOTE yaml multilines is not consistently implemented.
 # cwl-utils use ruamel rather than PyYaml and do some configuration.
 # For now we deal with it the PyYaml way, which can lead to
