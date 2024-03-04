@@ -17,6 +17,7 @@ from pydantic import WrapSerializer
 
 PythonValue = Any
 CWLValue = Union[dict, list, PythonValue]
+Expression = str
 
 
 class CWLBaseType(BaseModel, metaclass=abc.ABCMeta):

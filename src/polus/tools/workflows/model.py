@@ -1,4 +1,4 @@
-"""Model."""
+"""The main cwl models."""
 
 from enum import Enum
 from pathlib import Path
@@ -31,60 +31,21 @@ from polus.tools.workflows.exceptions import ScatterValidationError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
 from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 from polus.tools.workflows.exceptions import UnsupportedProcessClassError
-from polus.tools.workflows.requirements import ProcessRequirement
+from polus.tools.workflows.model_extra import CommandLineBinding
+from polus.tools.workflows.model_extra import CommandOutputBinding
+from polus.tools.workflows.model_extra import CwlDocExtra
+from polus.tools.workflows.model_extra import CwlRequireExtra
+from polus.tools.workflows.model_extra import InputBinding
+from polus.tools.workflows.model_extra import LoadListingEnum
+from polus.tools.workflows.model_extra import PickValueMethod
+from polus.tools.workflows.model_extra import SecondaryFileSchema
 from polus.tools.workflows.types import CWLBasicTypeEnum
 from polus.tools.workflows.types import CWLType
 from polus.tools.workflows.types import CWLValue
+from polus.tools.workflows.types import Expression
 from polus.tools.workflows.types import PythonValue
 from polus.tools.workflows.utils import directory_exists
 from polus.tools.workflows.utils import file_exists
-
-Expression = str
-
-
-class LoadListingEnum(str, Enum):
-    """Desired behavior for loading listing."""
-
-    no_listing = "no_listing"
-    shallow_listing = "shallow_listing"
-    deep_listing = "deep_listing"
-
-
-class InputBinding(BaseModel):
-    """Base class for any Input Binding."""
-
-    pass
-
-
-class CommandLineBinding(InputBinding):
-    """CommandLineBinding.
-
-    Describe how to translate the input parameter to a
-    program argument.
-    """
-
-    position: Optional[int] = None
-    load_contents: Optional[bool] = Field(None, alias="loadContents")
-    prefix: Optional[str] = Field(None)
-    separate: Optional[bool] = Field(None)
-    item_separator: Optional[str] = Field(None, alias="ItemSeparator")
-    value_from: Optional[Union[str, Expression]] = Field(None, alias="valueFrom")
-    shell_quote: Optional[bool] = Field(None, alias="ShellQuote")
-
-
-class CommandOutputBinding(BaseModel):
-    """CommandOutputBinding.
-
-    Describe how to translate the wrapped program result
-    into a an output parameter.
-    """
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    load_contents: Optional[bool] = Field(None, alias="loadContents")
-    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
-    glob: Optional[Union[str, list[str], Expression]] = None
-    output_eval: Optional[Expression] = Field(None, alias="outputEval")
 
 
 # TODO checks for parameter ids?
@@ -96,7 +57,7 @@ def is_valid_parameter_id(id_: str) -> str:
 ParameterId = Annotated[str, [is_valid_parameter_id]]
 
 
-class Parameter(BaseModel):
+class Parameter(CwlDocExtra):
     """Parameter.
 
     Base representation of any parameters.
@@ -159,6 +120,15 @@ class WorkflowInputParameter(InputParameter):
     to provide to execute a workflow.
     """
 
+    secondary_files: Optional[
+        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
+    ] = Field(None, alias="secondaryFiles")
+    streamable: Optional[bool] = None
+    load_contents: Optional[bool] = Field(None, alias="loadContents")
+    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
+    default: Optional[CWLValue] = None
+    input_binding: Optional[InputBinding] = Field(None, alias="inputBinding")
+
     pass
 
 
@@ -178,6 +148,13 @@ class WorkflowOutputParameter(OutputParameter):
     # TODO CHECK maybe add additional constraints?
     output_source: str = Field(..., alias="outputSource")
 
+    secondary_files: Optional[
+        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
+    ] = Field(None, alias="secondaryFiles")
+    streamable: Optional[bool] = None
+    link_merge: Optional[PickValueMethod] = Field(None, alias="linkMerge")
+    pick_value: Optional[PickValueMethod] = Field(None, alias="pickValue")
+
 
 class CommandInputParameter(InputParameter):
     """Command Line Tool input parameter."""
@@ -188,6 +165,10 @@ class CommandInputParameter(InputParameter):
     load_contents: Optional[bool] = Field(None, alias="loadContents")
     load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
     default: Optional[CWLValue] = None
+    secondary_files: Optional[
+        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
+    ] = Field(None, alias="secondaryFiles")
+    streamable: Optional[bool] = None
 
 
 class CommandOutputParameter(OutputParameter):
@@ -198,6 +179,10 @@ class CommandOutputParameter(OutputParameter):
         None,
         alias="outputBinding",
     )
+    secondary_files: Optional[
+        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
+    ] = Field(None, alias="secondaryFiles")
+    streamable: Optional[bool] = None
 
 
 # TODO CHECK if we need extra validation.
@@ -234,7 +219,7 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
     step_id: str
 
 
-class WorkflowStepInput(BaseModel):
+class WorkflowStepInput(CwlDocExtra):
     """WorkflowStepInput.
 
     It describes how to provide an input to a workflow step.
@@ -245,6 +230,12 @@ class WorkflowStepInput(BaseModel):
 
     id_: StepIOId = Field(..., alias="id")
     source: Optional[str]
+
+    link_merge: Optional[PickValueMethod] = Field(None, alias="linkMerge")
+    pick_value: Optional[PickValueMethod] = Field(None, alias="pickValue")
+    load_contents: Optional[bool] = Field(None, alias="loadContents")
+    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
+    value_from: Optional[Union[str, Expression]] = Field(None, alias="valueFrom")
 
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
@@ -316,21 +307,7 @@ class ScatterMethodEnum(str, Enum):
     flat_crossproduct = "flat_crossproduct"
 
 
-class CwlDocExtra(BaseModel):
-    """Extra Model properties for documentation."""
-
-    doc: Optional[Union[str, list[str]]] = None
-    label: Optional[str] = None
-
-
-class CwlRequireExtra(BaseModel):
-    """Extra model properties for requirements."""
-
-    requirements: Optional[list[ProcessRequirement]] = None
-    hints: Optional[list[Any]] = None
-
-
-class WorkflowStep(BaseModel):
+class WorkflowStep(CwlDocExtra, CwlRequireExtra):
     """Capture a workflow step.
 
     A workflow step has an id so it can be referenced by other steps,
@@ -348,6 +325,10 @@ class WorkflowStep(BaseModel):
     run: Union[str, "Process"]
     in_: WorkflowStepInputs = Field(..., alias="in")
     out: WorkflowStepOutputs = Field(...)
+    when: Optional[Expression] = Field(None)  # ref to conditional execution clauses
+    scatter: Optional[list[str]] = Field(None)  # ref to scatter inputs
+    scatter_method: Optional[ScatterMethodEnum] = Field(None, alias="scatterMethod")
+    from_builder: Optional[bool] = Field(False, exclude=True)
 
     @property
     def _inputs(self) -> dict[StepIOId, WorkflowStepInput]:
@@ -358,14 +339,6 @@ class WorkflowStep(BaseModel):
     def _outputs(self) -> dict[StepIOId, WorkflowStepOutput]:
         """Generate a dict of WorkflowStepOutputs for efficient retrieval."""
         return {output.id_: output for output in self.out}
-
-    scatter: Optional[list[str]] = Field(None)  # ref to scatter inputs
-    scatter_method: Optional[ScatterMethodEnum] = Field(None, alias="scatterMethod")
-
-    when: Optional[Expression] = Field(None)  # ref to conditional execution clauses
-
-    # TODO CHECK we may remove that later
-    from_builder: Optional[bool] = Field(False, exclude=True)
 
     @field_serializer("out", when_used="always")
     @classmethod
@@ -541,6 +514,7 @@ class Process(CwlRequireExtra, CwlDocExtra):
     id_: ProcessId = Field(..., alias="id")
     cwl_version: str = Field("v1.2", alias="cwlVersion")
     class_: str = Field(..., alias="class")
+    intent: Optional[list[str]] = Field(None)
 
     @property
     def _inputs(self) -> dict[ParameterId, InputParameter]:
@@ -699,7 +673,6 @@ class CommandLineTool(Process):
     stderr: Optional[str] = None
     stdout: Optional[str] = None
     class_: str = Field(alias="class", default="CommandLineTool")
-    intent: Optional[list[str]] = Field(None)
     arguments: Optional[Union[str, Expression, CommandLineBinding]] = Field(None)
     success_codes: Optional[list[int]] = Field(None, alias="successCodes")
     temporary_fail_codes: Optional[list[int]] = Field(None, alias="temporaryFailCodes")

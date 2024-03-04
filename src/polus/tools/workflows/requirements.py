@@ -94,6 +94,15 @@ class ResourceRequirement(ProcessRequirement):
     outdir_max: Optional[Union[int, float]] = Field(None, alias="outdirMax")
 
 
+class SchemaDefRequirement(BaseModel):
+    """SchemaDefRequirement.
+
+    https://www.commonwl.org/v1.2/Workflow.html#SchemaDefRequirement
+    """
+
+    pass
+
+
 class NetworkAccess(ProcessRequirement):
     """NetworkAccess."""
 
