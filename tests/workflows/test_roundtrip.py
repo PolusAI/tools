@@ -15,11 +15,16 @@ FILE_NAME = Path(__file__).stem
 OUTPUT_DIR, STAGING_DIR = configure_folders(FILE_NAME)
 
 
-@pytest.mark.skip(reason="not implemented")
-def test_parsing_doc_with_special_character_string() -> None:
-    """Test that docstring with |- are taken care of."""
-    # TODO FIX. For now this character is improperly encoded.
-    NotImplemented
+# NOTE yaml multilines is not consistently implemented.
+# cwl-utils use ruamel rather than PyYaml and do some configuration.
+# For now we deal with it the PyYaml way, which can lead to
+# some inconsistencies in the roudntrip test results.
+@pytest.mark.parametrize("filename", ["echo_string_with_multiline_doc.cwl"])
+def test_parsing_doc_with_special_character_string(
+    test_data_dir: Path, tmp_dir: Path, filename: str
+) -> None:
+    """Test roundtrip for clts."""
+    __test_roundtrip(tmp_dir, test_data_dir, filename)
 
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])

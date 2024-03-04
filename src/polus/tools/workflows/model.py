@@ -468,7 +468,7 @@ class Process(BaseModel):
     id_: ProcessId = Field(..., alias="id")
     cwl_version: str = Field("v1.2", alias="cwlVersion")
     class_: str = Field(..., alias="class")
-    doc: Optional[str] = None
+    doc: Optional[Union[str, list[str]]] = None
     label: Optional[str] = None
     requirements: Optional[list[ProcessRequirement]] = None
 

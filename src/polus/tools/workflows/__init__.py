@@ -1,5 +1,6 @@
 """Workflows package entrypoint."""
 
+import polus.tools.workflows.config
 from polus.tools.workflows.backends import run_cwl
 from polus.tools.workflows.builders import StepBuilder
 from polus.tools.workflows.builders import WorkflowBuilder
