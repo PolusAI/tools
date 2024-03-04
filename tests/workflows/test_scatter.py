@@ -34,11 +34,11 @@ def scatter_workflow(test_data_dir: Path, request: pytest.FixtureRequest) -> Wor
 
     # scatter all inputs for echo
     scattered_inputs = [input.id_ for input in echo.inputs]
-    step1 = StepBuilder(echo, scatter=scattered_inputs)()
+    step1 = StepBuilder()(echo, scatter=scattered_inputs)
 
     # scatter all inputs for uppercase
     scattered_inputs = [input.id_ for input in uppercase.inputs]
-    step2 = StepBuilder(uppercase, scatter=scattered_inputs)()
+    step2 = StepBuilder()(uppercase, scatter=scattered_inputs)
 
     # linking scattered steps
     step2.message = step1.message_string
@@ -46,10 +46,8 @@ def scatter_workflow(test_data_dir: Path, request: pytest.FixtureRequest) -> Wor
     # create a test for that
     # step2.uppercase_message = step1.message_string
 
-    # TODO make sure we can build the workflow wherever we want
-    # and point to our temp dir
-    wf_builder = WorkflowBuilder("wf_scatter", steps=[step1, step2], workdir=OUTPUT_DIR)
-    wf = wf_builder()
+    wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
+    wf = wf_builder("wf_scatter", steps=[step1, step2])
 
     assert len(wf.inputs) == 1
     assert len(wf.outputs) == 2
@@ -102,8 +100,7 @@ def test_build_scatter_step(test_data_dir: Path, filename: str) -> None:
 
     cwl_file = test_data_dir / filename
     clt = CommandLineTool.load(cwl_file)
-    step_builder = StepBuilder(clt)
-    step1 = step_builder()
+    step1 = StepBuilder()(clt)
 
     assert len(step1.in_) == 1
     assert len(step1.out) == 1
@@ -117,8 +114,7 @@ def test_build_scatter_step(test_data_dir: Path, filename: str) -> None:
 
     # build a scatter step
     scattered_inputs = [input.id_ for input in clt.inputs]
-    step_builder = StepBuilder(clt, scatter=scattered_inputs)
-    step1 = step_builder()
+    step1 = StepBuilder()(clt, scatter=scattered_inputs)
 
     assert len(step1.in_) == 1
     assert len(step1.out) == 1
@@ -142,8 +138,7 @@ def test_build_scatter_step_nested_array(test_data_dir: Path, filename: str) -> 
 
     cwl_file = test_data_dir / filename
     clt = CommandLineTool.load(cwl_file)
-    step_builder = StepBuilder(clt)
-    step1 = step_builder()
+    step1 = StepBuilder()(clt)
 
     assert len(step1.in_) == 1
     assert len(step1.out) == 1
@@ -161,8 +156,7 @@ def test_build_scatter_step_nested_array(test_data_dir: Path, filename: str) -> 
 
     # build a scatter step
     scattered_inputs = [input.id_ for input in clt.inputs]
-    step_builder = StepBuilder(clt, scatter=scattered_inputs)
-    step1 = step_builder()
+    step1 = StepBuilder()(clt, scatter=scattered_inputs)
 
     assert len(step1.in_) == 1
     assert len(step1.out) == 1
@@ -201,7 +195,7 @@ def test_run_scatter_wf_with_config(scatter_workflow: Workflow, tmp_dir: Path) -
     In particular, check that type promotion is properly handled.
     """
     scatter_workflow.save(OUTPUT_DIR)
-    wf_step = StepBuilder(scatter_workflow)()
+    wf_step = StepBuilder()(scatter_workflow)
     wf_step.in_[0].value = ["test_message1", "test_message2"]
     config = wf_step.save_config(path=OUTPUT_DIR)
     run_cwl(

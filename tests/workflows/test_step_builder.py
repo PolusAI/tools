@@ -12,5 +12,4 @@ def test_step_builder(test_data_dir: Path, filename: str) -> None:
     """Test we can build a step from a cwl clt file."""
     cwl_file = test_data_dir / filename
     clt = CommandLineTool.load(cwl_file)
-    step_builder = StepBuilder(clt)
-    step_builder()
+    StepBuilder()(clt)

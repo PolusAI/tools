@@ -27,12 +27,12 @@ def test_workflow_builder(test_data_dir: Path, clts: list[str]) -> None:
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        step = StepBuilder(clt)()
+        step = StepBuilder()(clt)
         steps_input_count += len(step.in_)
         steps_output_count += len(step.out)
         steps.append(step)
-    wf_builder = WorkflowBuilder("wf3", steps=steps, workdir=OUTPUT_DIR)
-    wf: Workflow = wf_builder()
+    wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
+    wf: Workflow = wf_builder("wf3", steps=steps)
 
     input_count = len(wf.inputs)
     assert (
@@ -59,7 +59,7 @@ def test_workflow_builder_with_linked_steps(
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        step = StepBuilder(clt)()
+        step = StepBuilder()(clt)
         steps_input_count += len(step.in_)
         steps_output_count += len(step.out)
         steps.append(step)
@@ -69,8 +69,8 @@ def test_workflow_builder_with_linked_steps(
     step2.message = step1.message_string
     step2.uppercase_message = step1.message_string
 
-    wf_builder = WorkflowBuilder("wf3", steps=steps, workdir=OUTPUT_DIR)
-    wf: Workflow = wf_builder()
+    wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
+    wf: Workflow = wf_builder("wf3", steps=steps)
 
     input_count = len(wf.inputs)
     # we have linked 2 inputs from the second step
@@ -94,29 +94,26 @@ def test_workflow_builder_with_subworkflows(
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        step_builder = StepBuilder(clt)
-        step = step_builder()
+        step = StepBuilder()(clt)
         steps.append(step)
 
     (step1, step2, step3) = steps
     step2.message = step1.message_string
     step2.uppercase_message = step1.message_string
 
-    wf_builder = WorkflowBuilder("wf3", steps=[step1, step2], workdir=OUTPUT_DIR)
-    wf: Workflow = wf_builder()
-    step_builder = StepBuilder(wf)
-    step12 = step_builder()
+    wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
+    wf: Workflow = wf_builder("wf3", steps=[step1, step2])
+    step12 = StepBuilder()(wf)
 
     # TODO CHECK yep names become quickly unwieldly. See how we can do better.
     step3.touchfiles = (
         step12.wf3___1__step__uppercase2_wic_compatible2___uppercase_message
     )
 
-    wf_builder = WorkflowBuilder("wf4", steps=[step12, step3], workdir=OUTPUT_DIR)
-    main_wf = wf_builder()
+    wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
+    main_wf = wf_builder("wf4", steps=[step12, step3])
 
-    step_builder = StepBuilder(main_wf)
-    step4 = step_builder()
+    step4 = StepBuilder()(main_wf)
 
     step4.wf4___0__step__wf3___wf3___0__step__echo_string___message = "test_message"
     config = step4.save_config(OUTPUT_DIR)

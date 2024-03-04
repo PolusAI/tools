@@ -34,12 +34,3 @@ def test_save_subworkflow(test_data_dir: Path, filename: str) -> None:
     cwl_file = test_data_dir / filename
     wf2 = Workflow.load(cwl_file)
     wf2.save(path=OUTPUT_DIR)
-
-
-# TODO
-@pytest.mark.skip(reason="not implemented")
-def test_recursive_save() -> None:
-    """Recursively saving all processes referenced."""
-    # TODO CHECK We could add this capability if we want to bundle the whole workflow
-    # description.
-    pass

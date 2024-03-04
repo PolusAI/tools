@@ -37,21 +37,28 @@ from polus.tools.workflows.types import CWLType
 
 
 class StepBuilder:
-    """Create a workflow step.
+    """Build a step.
 
-    Create a WorkflowStep from a Process.
-    For each input/output of the clt, a corresponding step in/out is created.
+    Step can also be used to generate configuration for a process.
     """
 
-    def __init__(  # noqa: PLR0913 - we want to provide hints to user.
+    def __init__(self) -> None:
+        """Set up Step factory."""
+        pass
+
+    def __call__(  # noqa: PLR0913
         self,
         process: Process,
         scatter: Optional[list[str]] = None,
         when: Optional[str] = None,
         add_inputs: Optional[list[dict]] = None,
         when_input_names: Optional[list[str]] = None,
-    ) -> None:
-        """Set up Step factory."""
+    ) -> WorkflowStep:
+        """Create a workflow step.
+
+        Create a WorkflowStep from a Process.
+        For each input/output of the clt, a corresponding step in/out is created.
+        """
         # TODO we could make this a default strategy that
         # can be overriden by the user.
         step_id = generate_default_step_id(process.name)
@@ -70,8 +77,6 @@ class StepBuilder:
             for input_ in process.inputs
         ]
 
-        # TODO Check spec. If scatter is present all outputs
-        # should be scattered.
         outputs = [
             AssignableWorkflowStepOutput(
                 id=output.id_,
@@ -87,7 +92,7 @@ class StepBuilder:
 
         # Generate additional inputs.
         # For example,if the conditional clause contains unknown inputs.
-        # It could also be to generate fake inputs for wic compatibility.
+        # It could also be used to generate fake inputs for wic compatibility.
         if parsed_add_inputs:
             inputs = inputs + [
                 AssignableWorkflowStepInput(
@@ -125,6 +130,8 @@ class StepBuilder:
                     ):
                         self.step._inputs[input_.source].value = input_.value
                         self.step._inputs[input_.source]
+
+        return self.step
 
     def _promote_cwl_type(self, type_: CWLType) -> CWLArray:
         """Promoting types.
@@ -188,10 +195,6 @@ class StepBuilder:
                             Please add its declaration to add_inputs arguments."
                     raise WhenClauseValidationError(msg)
 
-    def __call__(self) -> WorkflowStep:
-        """Returns the fully constructed WorkflowStep."""
-        return self.step
-
 
 class WorkflowBuilder:
     """Builder for a workflow object.
@@ -200,30 +203,35 @@ class WorkflowBuilder:
     """
 
     class Options(TypedDict):
-        """WorkflowBuilder options."""
+        """WorkflowBuilder options.
+
+        workdir: where to save the generated cwl specification file.
+        recursive: set to true if process references be recursively loaded.
+        context: optional dictionary in which all process refs are recorded.
+        add_step_index: set to true if step should be preprended by their position
+        in the original list (necessary is step are repeated).
+        # NOTE this could be auto-detected instead.
+        """
 
         workdir: NotRequired[Path]
         recursive: NotRequired[bool]
         context: NotRequired[dict]
-        steps: NotRequired[list[WorkflowStep]]
+        add_step_index: NotRequired[bool]
 
-    # TODO probably split between factory option
-    # and workflow generation.
-    def __init__(  # noqa: C901
+    def __init__(
         self,
-        id_: str,
         **kwds: Unpack[Options],
     ) -> None:
         """Set up the workflow factory options."""
-        context = {}
-        recursive = True
-
-        steps = kwds.get("steps", [])
+        self.context = {}
+        self.recursive = True
         self.workdir = kwds.get("workdir", Path())
-        recursive = kwds.get("recursive", True)
-        context = kwds.get("context", {})
-        add_step_index = True
+        self.recursive = kwds.get("recursive", True)
+        self.context = kwds.get("context", {})
+        self.add_step_index = kwds.get("recursive", True)
 
+    def __call__(self, id_: str, steps: list[WorkflowStep]) -> Workflow:  # noqa C901
+        """Build a workflow and save the cwl specification file."""
         if not steps:
             steps = []
 
@@ -245,16 +253,16 @@ class WorkflowBuilder:
         subworkflow_feature_requirement = False
         inline_javascript_requirement = False
 
-        if add_step_index:
+        if self.add_step_index:
             self.update_steps_references_with_index(steps)
 
         for step in steps:
             # if we have the definition already in context, just use it.
             # Subprocesses will not be loaded either.
-            if step.run not in context:
-                Process.load(step.run, recursive=recursive, context=context)
+            if step.run not in self.context:
+                Process.load(step.run, recursive=self.recursive, context=self.context)
 
-            # TODO CHECK if we would to look recursively or not
+            # TODO CHECK if we would need to look recursively or not to
             # update workflow requirements
             if step.scatter:
                 scatter_requirement = True
@@ -304,7 +312,8 @@ class WorkflowBuilder:
                 workflow_outputs.append(workflow_output)
 
         # Detect if we need to add subworkflowFeatureRequirement.
-        for process in context.values():
+        # TODO CHANGE no need to do this recursively
+        for process in self.context.values():
             if process.class_ == "Workflow":
                 subworkflow_feature_requirement = True
                 break
@@ -326,13 +335,6 @@ class WorkflowBuilder:
             from_builder=True,
         )
 
-    def __call__(self) -> Workflow:
-        """Save the workflow description and return the workflow object."""
-        # TODO figure out if we want to first set the factory, then
-        # initialize the workflow or keep things as they are.
-        # NOTE this could be revisited, but
-        # we need to be able to load the original cwl when creating workflows
-        # that use this workflow.
         self.workflow.save(self.workdir)
         return self.workflow
 

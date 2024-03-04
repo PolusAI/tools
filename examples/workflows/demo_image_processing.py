@@ -35,7 +35,7 @@ if __name__ == "__main__":
         precompute_slide_cwl,
     ]
     clts = [CommandLineTool.load(clt) for clt in clt_files]
-    steps = [StepBuilder(clt)() for clt in clts]
+    steps = [StepBuilder()(clt) for clt in clts]
 
     (bbbc, rename, ome_converter, montage, image_assembler, precompute_slide) = steps
 
@@ -69,12 +69,12 @@ if __name__ == "__main__":
     precompute_slide.inpDir = image_assembler.outDir
     precompute_slide.outDir = WORKFLOW_OUTPUT_DIR
 
-    workflow = WorkflowBuilder("wf_image_processing", steps=steps, workdir=OUTPUT_DIR)()
+    workflow = WorkflowBuilder(workdir=OUTPUT_DIR)("wf_image_processing", steps=steps)
 
     pprint([input_.id_ for input_ in workflow.inputs])  # noqa: T203
 
     # TODO Now the workflow can be configured. We could hide that from the user.
-    wf: Workflow = StepBuilder(workflow)()
+    wf: Workflow = StepBuilder()(workflow)
 
     config = wf.save_config(OUTPUT_DIR)
 

@@ -35,19 +35,19 @@ def conditional_workflow(
     for filename in workflows:
         cwl_file = test_data_dir / filename
         clt = Workflow.load(cwl_file)
-        step = StepBuilder(clt)()
+        step = StepBuilder()(clt)
         steps.append(step)
 
     # create the step with the conditional clause
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        step = StepBuilder(
+        step = StepBuilder()(
             clt,
             when="$(inputs.should_execute < 1)",
             when_input_names=["should_execute"],
             add_inputs=[{"id": "should_execute", "type": "int"}],
-        )()
+        )
         steps.append(step)
 
     (echo_uppercase_wf, touch) = steps
@@ -56,7 +56,7 @@ def conditional_workflow(
     touch.touchfiles = echo_uppercase_wf.uppercase_message
 
     # building full workflow
-    wf = WorkflowBuilder("workflow_conditional", steps=steps, workdir=OUTPUT_DIR)()
+    wf = WorkflowBuilder(workdir=OUTPUT_DIR)("workflow_conditional", steps=steps)
     return wf
 
 
@@ -99,13 +99,12 @@ def test_build_conditional_step(test_data_dir: Path, filename: str) -> None:
     cwl_file = test_data_dir / filename
     clt = CommandLineTool.load(cwl_file)
 
-    step_builder = StepBuilder(
+    step = StepBuilder()(
         clt,
         when="$(inputs.should_execute < 1)",
         when_input_names=["should_execute"],
         add_inputs=[{"id": "should_execute", "type": "int"}],
     )
-    step = step_builder()
 
     # Check that we added a new step input.
     assert len(clt.inputs) == 1
@@ -193,7 +192,7 @@ def test_run_negative(conditional_workflow: Workflow) -> None:
 
 def test_run_conditional_workflow_with_config(conditional_workflow: Workflow) -> None:
     """Run workflow with config file."""
-    wf = StepBuilder(conditional_workflow)()
+    wf = StepBuilder()(conditional_workflow)
     wf.in_[0].value = "ok"
     wf.in_[1].value = 4
 
