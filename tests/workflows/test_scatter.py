@@ -9,6 +9,8 @@ from polus.tools.workflows import (
     WorkflowBuilder,
     run_cwl,
 )
+from polus.tools.workflows.exceptions import ScatterValidationError
+from polus.tools.workflows.model import ScatterMethodEnum
 from polus.tools.workflows.types import CWLArray, CWLBasicType, CWLBasicTypeEnum
 from polus.tools.workflows.utils import configure_folders
 
@@ -33,11 +35,11 @@ def scatter_workflow(test_data_dir: Path, request: pytest.FixtureRequest) -> Wor
     (echo, uppercase) = clts
 
     # scatter all inputs for echo
-    scattered_inputs = [input.id_ for input in echo.inputs]
+    scattered_inputs = [input_.id_ for input_ in echo.inputs]
     step1 = StepBuilder()(echo, scatter=scattered_inputs)
 
     # scatter all inputs for uppercase
-    scattered_inputs = [input.id_ for input in uppercase.inputs]
+    scattered_inputs = [input_.id_ for input_ in uppercase.inputs]
     step2 = StepBuilder()(uppercase, scatter=scattered_inputs)
 
     # linking scattered steps
@@ -113,7 +115,7 @@ def test_build_scatter_step(test_data_dir: Path, filename: str) -> None:
     step1.message = "test_message"
 
     # build a scatter step
-    scattered_inputs = [input.id_ for input in clt.inputs]
+    scattered_inputs = [input_.id_ for input_ in clt.inputs]
     step1 = StepBuilder()(clt, scatter=scattered_inputs)
 
     assert len(step1.in_) == 1
@@ -155,7 +157,7 @@ def test_build_scatter_step_nested_array(test_data_dir: Path, filename: str) -> 
     step1.message = ["test_message1", "test_message2"]
 
     # build a scatter step
-    scattered_inputs = [input.id_ for input in clt.inputs]
+    scattered_inputs = [input_.id_ for input_ in clt.inputs]
     step1 = StepBuilder()(clt, scatter=scattered_inputs)
 
     assert len(step1.in_) == 1
@@ -170,11 +172,30 @@ def test_build_scatter_step_nested_array(test_data_dir: Path, filename: str) -> 
     step1.message = [["ok1", "ok2"]]
 
 
-def test_build_scatter_wf(scatter_workflow: Workflow) -> None:
-    """Test we can build a workflow with linked scattered steps.
-
-    In particular, check that type promotion is properly handled.
+@pytest.mark.parametrize("filename", ["echo_string.cwl"])
+def test_scatter_over_bad_inputs(test_data_dir: Path, filename: str) -> None:
+    """Test that properly report exception if scatter contains
+    non-existing input names.
     """
+
+    cwl_file = test_data_dir / filename
+    clt = CommandLineTool.load(cwl_file)
+    scattered_inputs = [input_.id_ for input_ in clt.inputs]
+    scattered_inputs.append("nonExistingInput")
+
+    with pytest.raises(ScatterValidationError):
+        StepBuilder()(clt, scatter=scattered_inputs)
+
+
+@pytest.mark.parametrize("filename", ["uppercase2_wic_compatible2.cwl"])
+def test_scatter_add_scatter_method(test_data_dir: Path, filename: str) -> None:
+    """Test that we create a scatter method if required and missing."""
+    cwl_file = test_data_dir / filename
+    clt = CommandLineTool.load(cwl_file)
+    scattered_inputs = [input_.id_ for input_ in clt.inputs]
+    step = StepBuilder()(clt, scatter=scattered_inputs)
+
+    assert step.scatter_method == ScatterMethodEnum.dotproduct
 
 
 def test_run_scatter_wf(scatter_workflow: Workflow, tmp_dir: Path):
@@ -184,7 +205,7 @@ def test_run_scatter_wf(scatter_workflow: Workflow, tmp_dir: Path):
     """
 
     wf_cwl_file = Path(urlparse(scatter_workflow.id_).path)
-    input_names = [input.id_ for input in scatter_workflow.inputs]
+    input_names = [input_.id_ for input_ in scatter_workflow.inputs]
     input_values = [f"--{input_names[0]}=test_message{i}" for i in range(4)]
     run_cwl(wf_cwl_file, extra_args=input_values, cwd=STAGING_DIR)
 

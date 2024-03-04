@@ -230,7 +230,7 @@ class WorkflowBuilder:
         self.context = kwds.get("context", {})
         self.add_step_index = kwds.get("recursive", True)
 
-    def __call__(self, id_: str, steps: list[WorkflowStep]) -> Workflow:  # noqa C901
+    def __call__(self, id_: str, steps: list[WorkflowStep]) -> Workflow:  # C901
         """Build a workflow and save the cwl specification file."""
         if not steps:
             steps = []
@@ -260,14 +260,18 @@ class WorkflowBuilder:
             # if we have the definition already in context, just use it.
             # Subprocesses will not be loaded either.
             if step.run not in self.context:
-                Process.load(step.run, recursive=self.recursive, context=self.context)
+                sub_process = Process.load(
+                    step.run,
+                    recursive=self.recursive,
+                    context=self.context,
+                )
 
-            # TODO CHECK if we would need to look recursively or not to
-            # update workflow requirements
             if step.scatter:
                 scatter_requirement = True
             if step.when:
                 inline_javascript_requirement = True
+            if sub_process.class_ == "Workflow":
+                subworkflow_feature_requirement = True
 
             for input_ in step.in_:
                 # Only create workflows inputs and connect to them
@@ -311,12 +315,9 @@ class WorkflowBuilder:
                 )
                 workflow_outputs.append(workflow_output)
 
-        # Detect if we need to add subworkflowFeatureRequirement.
-        # TODO CHANGE no need to do this recursively
-        for process in self.context.values():
-            if process.class_ == "Workflow":
-                subworkflow_feature_requirement = True
-                break
+        # NOTE if extra check on the whole model need to be performed, this
+        # can be done here. If recursive option is set to True,
+        # context will contain all process models.
 
         requirements = self.set_requirements(
             scatter_requirement,

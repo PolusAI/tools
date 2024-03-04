@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 
 from polus.tools.workflows import CommandLineTool, Workflow, Process
+from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
@@ -13,12 +14,12 @@ def test_load_clt(test_data_dir: Path, filename: str) -> None:
     CommandLineTool.load(cwl_file)
 
 
-@pytest.mark.xfail(reason="only cwl v1.2 is supported.")
 @pytest.mark.parametrize("filename", ["echo_string_v10.cwl"])
 def test_load_clt_old_version(test_data_dir: Path, filename: str) -> None:
     """Test Command Line Tool factory method."""
-    cwl_file = test_data_dir / filename
-    CommandLineTool.load(cwl_file)
+    with pytest.raises(UnsupportedCwlVersionError):
+        cwl_file = test_data_dir / filename
+        CommandLineTool.load(cwl_file)
 
 
 @pytest.mark.parametrize(

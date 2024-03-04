@@ -57,6 +57,14 @@ class UnsupportedProcessClassError(Exception):
         super().__init__(f"unsupported cwl process class : {class_}")
 
 
+class UnsupportedCwlVersionError(Exception):
+    """Raised if the cwl version is not supported."""
+
+    def __init__(self, version: str) -> None:
+        """Init UnsupportedCwlVersionError."""
+        super().__init__(f"Unsupported version: {version}. Only v1.2 is supported.")
+
+
 class BadCwlProcessFileError(Exception):
     """Raised if the cwl process file cannot be parsed."""
 
@@ -77,6 +85,15 @@ class WhenClauseValidationError(Exception):
     """WhenClauseValidationError.
 
     Raise whenever the when clause is invalid.
+    """
+
+    pass
+
+
+class ScatterValidationError(Exception):
+    """ScatterValidationError.
+
+    Raise whenever the scattered inputs configuration is invalid.
     """
 
     pass

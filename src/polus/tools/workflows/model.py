@@ -1,5 +1,6 @@
 """Model."""
 
+from enum import Enum
 from pathlib import Path
 from typing import Annotated
 from typing import Any
@@ -26,7 +27,9 @@ from polus.tools.workflows.exceptions import BadCwlProcessFileError
 from polus.tools.workflows.exceptions import IncompatibleTypeError
 from polus.tools.workflows.exceptions import IncompatibleValueError
 from polus.tools.workflows.exceptions import NotAFileError
+from polus.tools.workflows.exceptions import ScatterValidationError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
+from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 from polus.tools.workflows.exceptions import UnsupportedProcessClassError
 from polus.tools.workflows.requirements import ProcessRequirement
 from polus.tools.workflows.types import CWLType
@@ -279,6 +282,14 @@ WorkflowStepInputs = Annotated[
 WorkflowStepOutputs = Annotated[list[WorkflowStepOutput], []]
 
 
+class ScatterMethodEnum(str, Enum):
+    """Options for scatterMethod."""
+
+    dotproduct = "dotproduct"
+    nested_crossproduct = "nested_crossproduct"
+    flat_crossproduct = "flat_crossproduct"
+
+
 class WorkflowStep(BaseModel):
     """Capture a workflow step.
 
@@ -308,8 +319,8 @@ class WorkflowStep(BaseModel):
         """Generate a dict of WorkflowStepOutputs for efficient retrieval."""
         return {output.id_: output for output in self.out}
 
-    # TODO CHECK that ids exists?
     scatter: Optional[list[str]] = Field(None)  # ref to scatter inputs
+    scatter_method: Optional[ScatterMethodEnum] = Field(None, alias="scatterMethod")
 
     # TODO CHECK that.
     when: Optional[str] = Field(None)  # ref to conditional execution clauses
@@ -352,13 +363,43 @@ class WorkflowStep(BaseModel):
             scatter = [scatter]
         return scatter
 
+    def model_post_init(self, __context):  # noqa ANN001
+        """Extra validations and transformations."""
+        # check scatter references only exisiting inputs.
+        if self.scatter is not None:
+            for input_name in self.scatter:
+                if input_name not in self._inputs:
+                    input_names = list(self._inputs)
+                    err_msg = (
+                        f"`{input_name}` declared in scatter configuration"
+                        f" is not an input of step: `{self.id_}`."
+                        f" Declared inputs are: `{input_names}`."
+                    )
+                    raise ScatterValidationError(err_msg)
+
+            # check if we need a scatter method
+            if len(self.scatter) > 1 and not self.scatter_method:
+                self.scatter_method = ScatterMethodEnum.dotproduct
+
     def __setattr__(
         self,
         name: str,
         value: Union[PythonValue, AssignableWorkflowStepOutput],
     ) -> None:
         """This is enabling assignment in our python DSL."""
-        if name in ["in_", "_inputs", "out", "_outputs", "id_", "run"]:
+        # TODO replace with pydantic introspection methods
+        if name in [
+            "in_",
+            "_inputs",
+            "out",
+            "_outputs",
+            "id_",
+            "run",
+            "scatter_method",
+            "scatter",
+            "when",
+            "from_builder",
+        ]:
             return super().__setattr__(name, value)
         if self._inputs and name in self._inputs:
             input_ = self._inputs[name]
@@ -472,13 +513,11 @@ class Process(BaseModel):
     label: Optional[str] = None
     requirements: Optional[list[ProcessRequirement]] = None
 
-    # TODO CHECK if necessary
     @property
     def _inputs(self) -> dict[ParameterId, InputParameter]:
         """Internal index to retrieve inputs efficiently."""
         return {input_.id_: input_ for input_ in self.inputs}
 
-    # TODO CHECK if necessary
     @property
     def _outputs(self) -> dict[ParameterId, OutputParameter]:
         """Internal index to retrieve outputs efficiently."""
@@ -495,8 +534,7 @@ class Process(BaseModel):
     def validate_version(cls, version: str) -> str:
         """Check if the process version is v1.2."""
         if version and version != "v1.2":
-            msg = f"Unsupported version: {version}. Only v1.2 is supported."
-            raise Exception(msg)
+            raise UnsupportedCwlVersionError(version)
         return version
 
     @classmethod
