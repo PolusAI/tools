@@ -28,19 +28,19 @@ def test_parsing_doc_with_special_character_string(
     test_data_dir: Path, tmp_dir: Path, filename: str
 ) -> None:
     """Test roundtrip for clts."""
-    __test_roundtrip(tmp_dir, test_data_dir, filename)
+    __test_roundtrip(STAGING_DIR, test_data_dir, filename)
 
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
 def test_clt_roundtrip(test_data_dir: Path, tmp_dir: Path, filename: str) -> None:
     """Test roundtrip for clts."""
-    __test_roundtrip(tmp_dir, test_data_dir, filename)
+    __test_roundtrip(STAGING_DIR, test_data_dir, filename)
 
 
 @pytest.mark.parametrize("filename", ["workflow3.cwl"])
 def test_workflow_roundtrip(test_data_dir: Path, tmp_dir: Path, filename: str) -> None:
     """Test roundtrip for workflows."""
-    __test_roundtrip(tmp_dir, test_data_dir, filename)
+    __test_roundtrip(STAGING_DIR, test_data_dir, filename)
 
 
 def __test_roundtrip(tmp_dir: Path, test_data_dir: Path, filename: str) -> None:
@@ -71,7 +71,7 @@ def __test_roundtrip(tmp_dir: Path, test_data_dir: Path, filename: str) -> None:
     serialized_roundtrip_model = cwl_parser.save(roundtrip_model)
 
     # write model
-    roundtrip_filepath = Path(tmp_dir) / "round_trip_echo_string.cwl"
+    roundtrip_filepath = Path(tmp_dir) / f"roundtrip_{cwl_file.stem}.cwl"
     with roundtrip_filepath.open("w", encoding="utf-8") as roundtrip_file:
         roundtrip_file.write(yaml.dump(serialized_roundtrip_model))
 

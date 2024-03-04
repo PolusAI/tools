@@ -108,16 +108,13 @@ class Parameter(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id_: ParameterId = Field(..., alias="id")
+    type_: CWLType = Field(..., alias="type")
     # TODO make optional a parameter so it cannot be set
     # but only derived from type.
     # Check if we will still be able to retrieve it in the
     # type field validator.
     optional: bool = Field(False, exclude=True)
-    type_: CWLType = Field(..., alias="type")
-
-    # See https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
     format_: Optional[Union[str, list[str], Expression]] = Field(None, alias="format")
-    output_binding: Optional[CommandOutputBinding] = Field(None, alias="outputBinding")
 
     @field_validator("type_", mode="before")
     @classmethod
@@ -319,16 +316,21 @@ class ScatterMethodEnum(str, Enum):
     flat_crossproduct = "flat_crossproduct"
 
 
-class CwlModelExtra(BaseModel):
-    """Extra Model properties."""
+class CwlDocExtra(BaseModel):
+    """Extra Model properties for documentation."""
 
     doc: Optional[Union[str, list[str]]] = None
     label: Optional[str] = None
+
+
+class CwlRequireExtra(BaseModel):
+    """Extra model properties for requirements."""
+
     requirements: Optional[list[ProcessRequirement]] = None
     hints: Optional[list[Any]] = None
 
 
-class WorkflowStep(CwlModelExtra):
+class WorkflowStep(BaseModel):
     """Capture a workflow step.
 
     A workflow step has an id so it can be referenced by other steps,
@@ -524,7 +526,7 @@ files does not yet exists on disk.
 ProcessId = Annotated[str, AfterValidator(is_processid_uri)]
 
 
-class Process(CwlModelExtra):
+class Process(CwlRequireExtra, CwlDocExtra):
     """Process is the base class for all cwl models.
 
     It is the base classes for Workflows,CommandLineTools
