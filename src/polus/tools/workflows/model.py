@@ -42,38 +42,49 @@ from polus.tools.workflows.utils import file_exists
 Expression = str
 
 
+class LoadListingEnum(str, Enum):
+    """Desired behavior for loading listing."""
+
+    no_listing = "no_listing"
+    shallow_listing = "shallow_listing"
+    deep_listing = "deep_listing"
+
+
 class InputBinding(BaseModel):
     """Base class for any Input Binding."""
 
     pass
 
 
-class CommandLineInputBinding(InputBinding):
-    """CommandLineInputBinding.
+class CommandLineBinding(InputBinding):
+    """CommandLineBinding.
 
     Describe how to translate the input parameter to a
     program argument.
-    Cwl parser's counterpart is CommandLineBinding.
     """
 
-    # TODO Capture other missing attributes.
     position: Optional[int] = None
+    load_contents: Optional[bool] = Field(None, alias="loadContents")
+    prefix: Optional[str] = Field(None)
+    separate: Optional[bool] = Field(None)
+    item_separator: Optional[str] = Field(None, alias="ItemSeparator")
+    value_from: Optional[Union[str, Expression]] = Field(None, alias="valueFrom")
+    shell_quote: Optional[bool] = Field(None, alias="ShellQuote")
 
 
-class CommandLineOutputBinding(BaseModel):
-    """CommandLineOutputBinding.
+class CommandOutputBinding(BaseModel):
+    """CommandOutputBinding.
 
     Describe how to translate the wrapped program result
     into a an output parameter.
-
-    cwl parser's counterpart is CommandOutputBinding.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    glob: Optional[str] = None
     load_contents: Optional[bool] = Field(None, alias="loadContents")
-    output_eval: Optional[str] = Field(None, alias="outputEval")
+    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
+    glob: Optional[Union[str, list[str], Expression]] = None
+    output_eval: Optional[Expression] = Field(None, alias="outputEval")
 
 
 # TODO checks for parameter ids?
@@ -106,6 +117,7 @@ class Parameter(BaseModel):
 
     # See https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
     format_: Optional[Union[str, list[str], Expression]] = Field(None, alias="format")
+    output_binding: Optional[CommandOutputBinding] = Field(None, alias="outputBinding")
 
     @field_validator("type_", mode="before")
     @classmethod
@@ -123,9 +135,9 @@ class Parameter(BaseModel):
         return type_
 
     def model_post_init(self, __context: Any) -> None:  # noqa
-        if self.format and (
-            not isinstance(self.type, CWLType(CWLBasicTypeEnum.FILE))
-            or not isinstance(self.type, CWLType(items=CWLBasicTypeEnum.FILE))
+        if self.format_ and (
+            not isinstance(self.type_, CWLType(CWLBasicTypeEnum.FILE))
+            or not isinstance(self.type_, CWLType(items=CWLBasicTypeEnum.FILE))
         ):
             msg = "format only allowed with File or array of File."
             raise InvalidFormatError(msg)
@@ -170,20 +182,12 @@ class WorkflowOutputParameter(OutputParameter):
     output_source: str = Field(..., alias="outputSource")
 
 
-class LoadListingEnum(str, Enum):
-    """Desired behavior for loading listing."""
-
-    no_listing = "no_listing"
-    shallow_listing = "shallow_listing"
-    deep_listing = "deep_listing"
-
-
 class CommandInputParameter(InputParameter):
     """Command Line Tool input parameter."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    input_binding: Optional[CommandLineInputBinding] = Field(None, alias="inputBinding")
+    input_binding: Optional[CommandLineBinding] = Field(None, alias="inputBinding")
     load_contents: Optional[bool] = Field(None, alias="loadContents")
     load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
     default: Optional[CWLValue] = None
@@ -193,7 +197,7 @@ class CommandOutputParameter(OutputParameter):
     """Command Line Tool output parameter."""
 
     model_config = ConfigDict(populate_by_name=True)
-    output_binding: Optional[CommandLineOutputBinding] = Field(
+    output_binding: Optional[CommandOutputBinding] = Field(
         None,
         alias="outputBinding",
     )
@@ -315,7 +319,16 @@ class ScatterMethodEnum(str, Enum):
     flat_crossproduct = "flat_crossproduct"
 
 
-class WorkflowStep(BaseModel):
+class CwlModelExtra(BaseModel):
+    """Extra Model properties."""
+
+    doc: Optional[Union[str, list[str]]] = None
+    label: Optional[str] = None
+    requirements: Optional[list[ProcessRequirement]] = None
+    hints: Optional[list[Any]] = None
+
+
+class WorkflowStep(CwlModelExtra):
     """Capture a workflow step.
 
     A workflow step has an id so it can be referenced by other steps,
@@ -348,9 +361,6 @@ class WorkflowStep(BaseModel):
     scatter_method: Optional[ScatterMethodEnum] = Field(None, alias="scatterMethod")
 
     when: Optional[Expression] = Field(None)  # ref to conditional execution clauses
-
-    requirements: Optional[list[ProcessRequirement]] = None
-    hints: Optional[list[Any]] = None
 
     # TODO CHECK we may remove that later
     from_builder: Optional[bool] = Field(False, exclude=True)
@@ -514,7 +524,7 @@ files does not yet exists on disk.
 ProcessId = Annotated[str, AfterValidator(is_processid_uri)]
 
 
-class Process(BaseModel):
+class Process(CwlModelExtra):
     """Process is the base class for all cwl models.
 
     It is the base classes for Workflows,CommandLineTools
@@ -522,14 +532,13 @@ class Process(BaseModel):
     see (https://www.commonwl.org/user_guide/introduction/basic-concepts.html)
     """
 
+    # NOTE we decide to ignore extra attributes for now
+    model_config = ConfigDict(extra="ignore")
     model_config = ConfigDict(populate_by_name=True)
 
     id_: ProcessId = Field(..., alias="id")
     cwl_version: str = Field("v1.2", alias="cwlVersion")
     class_: str = Field(..., alias="class")
-    doc: Optional[Union[str, list[str]]] = None
-    label: Optional[str] = None
-    requirements: Optional[list[ProcessRequirement]] = None
 
     @property
     def _inputs(self) -> dict[ParameterId, InputParameter]:
@@ -679,16 +688,20 @@ class Workflow(Process):
 class CommandLineTool(Process):
     """Represent a CommandLineTool."""
 
-    # TODO Check we are adopting the correct strategy
-    model_config = ConfigDict(extra="ignore")
     model_config = ConfigDict(populate_by_name=True)
 
     inputs: list[CommandInputParameter]
     outputs: list[CommandOutputParameter]
-    # TODO Check after running hooks
     base_command: Optional[str] = Field(None, alias="baseCommand")
+    stdin: Optional[str] = None
+    stderr: Optional[str] = None
     stdout: Optional[str] = None
     class_: str = Field(alias="class", default="CommandLineTool")
+    intent: Optional[list[str]] = Field(None)
+    arguments: Optional[Union[str, Expression, CommandLineBinding]] = Field(None)
+    success_codes: Optional[list[int]] = Field(None, alias="successCodes")
+    temporary_fail_codes: Optional[list[int]] = Field(None, alias="temporaryFailCodes")
+    permanent_fail_codes: Optional[list[int]] = Field(None, alias="permanentFailCodes")
 
     @field_validator("class_", mode="before")
     @classmethod
