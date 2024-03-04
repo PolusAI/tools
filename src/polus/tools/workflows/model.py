@@ -19,7 +19,6 @@ from pydantic import WrapSerializer
 from pydantic import field_serializer
 from pydantic.functional_validators import AfterValidator
 from pydantic.functional_validators import field_validator
-from rich import print
 from schema_salad.exceptions import ValidationException as CwlParserException
 
 from polus.tools.workflows.default_ids import generate_cwl_source_repr
@@ -290,6 +289,9 @@ class ScatterMethodEnum(str, Enum):
     flat_crossproduct = "flat_crossproduct"
 
 
+Expression = str
+
+
 class WorkflowStep(BaseModel):
     """Capture a workflow step.
 
@@ -322,8 +324,10 @@ class WorkflowStep(BaseModel):
     scatter: Optional[list[str]] = Field(None)  # ref to scatter inputs
     scatter_method: Optional[ScatterMethodEnum] = Field(None, alias="scatterMethod")
 
-    # TODO CHECK that.
-    when: Optional[str] = Field(None)  # ref to conditional execution clauses
+    when: Optional[Expression] = Field(None)  # ref to conditional execution clauses
+
+    requirements: Optional[list[ProcessRequirement]] = None
+    hints: Optional[list[Any]] = None
 
     # TODO CHECK we may remove that later
     from_builder: Optional[bool] = Field(False, exclude=True)
@@ -387,31 +391,22 @@ class WorkflowStep(BaseModel):
         value: Union[PythonValue, AssignableWorkflowStepOutput],
     ) -> None:
         """This is enabling assignment in our python DSL."""
-        # TODO replace with pydantic introspection methods
-        if name in [
-            "in_",
-            "_inputs",
-            "out",
-            "_outputs",
-            "id_",
-            "run",
-            "scatter_method",
-            "scatter",
-            "when",
-            "from_builder",
-        ]:
+        # model properties are accessed normally,
+        # pydantic @computed_fields are automatically serialized
+        # so let's use @property instead and check for those input names.
+        if name in self.model_fields or name in ["_inputs", "_outputs"]:
             return super().__setattr__(name, value)
+
         if self._inputs and name in self._inputs:
             input_ = self._inputs[name]
             input_.set_value(value)
-            print(input_)
-            return None
-        if self._outputs and name in self._outputs:
+        elif self._outputs and name in self._outputs:
             output = self._outputs[name]
             output.set_value(value)
-            return None
-        msg = f"undefined attribute {name}"
-        raise AttributeError(msg)
+        else:
+            msg = f"undefined attribute {name}"
+            raise AttributeError(msg)
+        return None
 
     def __getattr__(self, name: str) -> Union[WorkflowStepInput, WorkflowStepOutput]:
         """This is enabling assignment in our python DSL."""
