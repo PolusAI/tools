@@ -72,6 +72,7 @@ class StepBuilder:
                 if scatter and input_.id_ in scatter
                 else input_.type_,
                 optional=input_.optional,
+                format_=input_.format_,
                 step_id=step_id,
             )
             for input_ in process.inputs
@@ -81,6 +82,7 @@ class StepBuilder:
             AssignableWorkflowStepOutput(
                 id=output.id_,
                 type=self._promote_cwl_type(output.type_) if scatter else output.type_,
+                format_=output.format_,
                 step_id=step_id,
             )
             for output in process.outputs

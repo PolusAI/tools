@@ -6,8 +6,6 @@ from typing import Annotated
 from typing import Any
 from typing import Optional
 from typing import Union
-from urllib.parse import unquote
-from urllib.parse import urlparse
 
 import cwl_utils.parser as cwl_parser
 import yaml  # type: ignore[import]
@@ -19,11 +17,11 @@ from pydantic import WrapSerializer
 from pydantic import field_serializer
 from pydantic import model_serializer
 from pydantic import model_validator
-from pydantic.functional_validators import AfterValidator
 from pydantic.functional_validators import field_validator
 from schema_salad.exceptions import ValidationException as CwlParserException
 from typing_extensions import Self
 
+from polus.tools.workflows.default_ids import extract_name_from_id
 from polus.tools.workflows.default_ids import generate_cwl_source_repr
 from polus.tools.workflows.exceptions import BadCwlProcessFileError
 from polus.tools.workflows.exceptions import IncompatibleTypeError
@@ -34,6 +32,7 @@ from polus.tools.workflows.exceptions import ScatterValidationError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
 from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 from polus.tools.workflows.exceptions import UnsupportedProcessClassError
+from polus.tools.workflows.logger import get_logger
 from polus.tools.workflows.model_extra import CommandLineBinding
 from polus.tools.workflows.model_extra import CommandOutputBinding
 from polus.tools.workflows.model_extra import CwlDocExtra
@@ -53,8 +52,9 @@ from polus.tools.workflows.types import SerializedModel
 from polus.tools.workflows.utils import directory_exists
 from polus.tools.workflows.utils import file_exists
 
+logger = get_logger(__name__)
 
-# TODO checks for parameter ids?
+
 def is_valid_parameter_id(id_: str) -> str:
     """Check if parameter id is valid."""
     return id_
@@ -76,7 +76,7 @@ class Parameter(CwlDocExtra):
 
     id_: ParameterId = Field(..., alias="id")
     type_: CWLType = Field(..., alias="type")
-    optional: bool = Field(False, exclude=True)  # TODO make optional unsettable?
+    optional: bool = Field(False, exclude=True)
     format_: Optional[Union[str, list[str], Expression]] = Field(None, alias="format")
 
     @model_serializer(mode="wrap", when_used="always")
@@ -87,8 +87,7 @@ class Parameter(CwlDocExtra):
             add_trailing_question_mark = False
             if isinstance(self.type_, CWLBasicType):
                 add_trailing_question_mark = True
-            # TODO Implement syntactic sugar for arrays?
-            # Would only work if we used syntactic sugar for simple arrays.
+            # NOTE Only valid if we used syntactic sugar for simple arrays.
             if isinstance(self.type_, CWLArray) and isinstance(
                 self.type_.items,
                 CWLBasicType,
@@ -245,6 +244,11 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: CWLType = Field(exclude=True, alias="type")
+    format_: Optional[Union[str, list[str], Expression]] = Field(
+        None,
+        exclude=True,
+        alias="format",
+    )
     value: Any = None
     step_id: str
 
@@ -279,6 +283,12 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: CWLType = Field(exclude=True, alias="type")
+    format_: Optional[Union[str, list[str], Expression]] = Field(
+        None,
+        exclude=True,
+        alias="format",
+    )
+
     value: PythonValue = None
     optional: bool = Field(exclude=True)
     step_id: str
@@ -291,10 +301,21 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         if isinstance(value, AssignableWorkflowStepOutput):
             if self.type_ != value.type_:
                 raise IncompatibleTypeError(self.type_, value.type_)
+            self.check_format(value)
             self.source = generate_cwl_source_repr(value.step_id, value.id_)
         elif value is not None and not self.type_.is_value_assignable(value):
             raise IncompatibleValueError(self.id_, self.type_, value)
         self.value = value
+
+    def check_format(self: Self, value: AssignableWorkflowStepOutput) -> None:
+        """Check that formats are compatible."""
+        if self.format_ and value.format_ and self.format_ != value.format_:
+            # NOTE for now we just warn if formats are not equivalent.
+            # we could do more advanced reasoning with ontologies if necessary.
+            logger.warning(
+                f"assigning output: {value.id_} to input: {self.id_}."
+                f"formats do not match. Got {self.format_} and {value.format_}",
+            )
 
 
 WorkflowStepId = Annotated[str, []]
@@ -489,21 +510,8 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
             return file_path
 
 
-# TODO CHECK this works with any valid id.
-def is_processid_uri(id_: str) -> str:
-    """Check we have a valid uri."""
-    # TODO throw custom exception?
-    Path(unquote(urlparse(id_).path))
-    return id_
-
-
-"""
-ProcessId needs to points to an existing file on disk
-in order to be pulled in a Workflow definition.
-However, when we first instantiated a newly buildworkfow, the
-files does not yet exists on disk.
-"""
-ProcessId = Annotated[str, AfterValidator(is_processid_uri)]
+# Placeholder for extra checks.
+ProcessId = Annotated[str, []]
 
 
 class Process(CwlRequireExtra, CwlDocExtra):
@@ -536,8 +544,7 @@ class Process(CwlRequireExtra, CwlDocExtra):
     @property
     def name(self) -> str:
         """Generate a name from the id for convenience purpose."""
-        # TODO CHECK this works for any allowable CLT
-        return Path(self.id_).stem
+        return extract_name_from_id(self.id_)
 
     @field_validator("cwl_version", mode="before")
     @classmethod

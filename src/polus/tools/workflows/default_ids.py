@@ -61,3 +61,8 @@ def generate_default_input_path(
     # Name clashes will occur if several inputs have the same name.
     # so we need to create unique directory names for each input.
     return path / (step_id + "__" + input_id)
+
+
+def extract_name_from_id(id_: str) -> str:
+    """Extract name from id."""
+    return Path(id_).stem

@@ -48,10 +48,9 @@ def process_type(type_: Union[SerializedModel, "CWLType"]) -> "CWLType":
     raise polus.tools.workflows.exceptions.UnexpectedTypeError(type_)
 
 
-# TODO check if we should make use of nxt
 def serialize_type(
     type_: "CWLType",
-    nxt: Optional[SerializerFunctionWrapHandler] = None,  # noqa
+    nxt: Optional[SerializerFunctionWrapHandler] = None,  # noqa: ARG001
 ) -> SerializedModel:
     """Serialize CWLTypes based on actual type."""
     if isinstance(type_, CWLBasicType):
