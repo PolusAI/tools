@@ -1,5 +1,6 @@
 """Test conditional clauses."""
 
+from time import sleep
 import pytest
 from pathlib import Path
 from urllib.parse import urlparse
@@ -12,7 +13,7 @@ from polus.tools.workflows import (
     run_cwl,
 )
 from polus.tools.workflows.types import CWLArray, CWLBasicType, CWLBasicTypeEnum
-from polus.tools.workflows.utils import configure_folders
+from polus.tools.workflows.utils import configure_folders, file_exists
 
 FILE_NAME = Path(__file__).stem
 OUTPUT_DIR, STAGING_DIR = configure_folders(FILE_NAME)
@@ -161,14 +162,19 @@ def test_run_positive(conditional_workflow: Workflow) -> None:
     """
     wf_cwl_file = Path(urlparse(conditional_workflow.id_).path)
 
+    filename = "message_file_created"
     input_names = [input.id_ for input in conditional_workflow.inputs]
-    input_values = [f"--{input_names[0]}=test_message_conditional"]
+    input_values = [f"--{input_names[0]}={filename}"]
 
     should_execute = 0
     input_values += [f"--{input_names[1]}={should_execute}"]
     run_cwl(wf_cwl_file, extra_args=input_values, cwd=STAGING_DIR)
 
-    # TODO add assert to check the file has been created.
+    # TODO CHECK why we get those trailing \n
+    path = Path(Path(STAGING_DIR / filename.upper()).as_posix() + "\n\n")
+
+    # test existence
+    file_exists(path)
 
 
 def test_run_negative(conditional_workflow: Workflow) -> None:
@@ -179,15 +185,18 @@ def test_run_negative(conditional_workflow: Workflow) -> None:
     """
     # TODO add convenience method to grab the file from the model?
     wf_cwl_file = Path(urlparse(conditional_workflow.id_).path)
-
+    filename = "message_file_never_created"
     input_names = [input.id_ for input in conditional_workflow.inputs]
-    input_values = [f"--{input_names[0]}=test_message_conditional"]
+    input_values = [f"--{input_names[0]}={filename}"]
 
     should_execute = 4
     input_values += [f"--{input_names[1]}={should_execute}"]
     run_cwl(wf_cwl_file, extra_args=input_values, cwd=STAGING_DIR)
 
-    # TODO add assert to check the file has not been created.
+    path = Path(Path(STAGING_DIR / filename.upper()).as_posix() + "\n\n")
+
+    with pytest.raises(FileNotFoundError):
+        file_exists(path)
 
 
 def test_run_conditional_workflow_with_config(conditional_workflow: Workflow) -> None:

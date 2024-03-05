@@ -28,12 +28,7 @@ def test_assign_int(default_input_model: dict[Any, Any]) -> None:
     input_model = {**default_input_model, **type_dict, "optional": True}
     input_ = AssignableWorkflowStepInput(**input_model)
 
-    # TODO CHECK optional is not serialize.
-    # How can we still dump the raw model?
-    # TODO review serialization to make this possible
-    # TODO move to model test afterwards
     assert input_.type_ == CWLBasicType(type_=CWLBasicTypeEnum.INT)
-
     assert input_.type_.is_value_assignable(
         4,
     ), f"Was expecting a int, got {input_.type_}"

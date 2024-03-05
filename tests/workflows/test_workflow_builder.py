@@ -105,17 +105,19 @@ def test_workflow_builder_with_subworkflows(
     wf: Workflow = wf_builder("wf3", steps=[step1, step2])
     step12 = StepBuilder()(wf)
 
-    # TODO CHECK yep names become quickly unwieldly. See how we can do better.
-    step3.touchfiles = (
-        step12.wf3___1__step__uppercase2_wic_compatible2___uppercase_message
-    )
+    step3.touchfiles = step12.out[0]
+    # equivalent to :
+    # step3.touchfiles = (
+    #     step12.wf3___1__step__uppercase2_wic_compatible2___uppercase_message
 
     wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
     main_wf = wf_builder("wf4", steps=[step12, step3])
 
     step4 = StepBuilder()(main_wf)
 
-    step4.wf4___0__step__wf3___wf3___0__step__echo_string___message = "test_message"
+    step4.in_[0].value = "test_message"
+    # equivalent to :
+
     config = step4.save_config(OUTPUT_DIR)
 
     run_cwl(OUTPUT_DIR / f"{main_wf.name}.cwl", config_file=config, cwd=STAGING_DIR)

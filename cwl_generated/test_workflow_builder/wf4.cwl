@@ -28,7 +28,7 @@ steps:
 - id: 1__step__touch_single
   in:
   - id: touchfiles
-    source: 0__step__wf3/wf3___1__step__uppercase2_wic_compatible2___uppercase_message
+    source: 0__step__wf3/wf3___0__step__echo_string___message_string
   out:
   - output
   run: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/touch_single.cwl

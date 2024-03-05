@@ -44,9 +44,6 @@ def scatter_workflow(test_data_dir: Path, request: pytest.FixtureRequest) -> Wor
 
     # linking scattered steps
     step2.message = step1.message_string
-    # TODO FIX - UGLY MESSAGE WHEN THIS ATTRIBUTE IS NOT PRESENT!
-    # create a test for that
-    # step2.uppercase_message = step1.message_string
 
     wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
     wf = wf_builder("wf_scatter", steps=[step1, step2])
