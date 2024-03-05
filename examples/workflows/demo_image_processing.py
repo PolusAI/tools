@@ -5,7 +5,6 @@ from pprint import pprint
 
 from polus.tools.workflows import CommandLineTool
 from polus.tools.workflows import StepBuilder
-from polus.tools.workflows import Workflow
 from polus.tools.workflows import WorkflowBuilder
 from polus.tools.workflows import run_cwl
 from polus.tools.workflows.utils import configure_folders
@@ -73,9 +72,6 @@ if __name__ == "__main__":
 
     pprint([input_.id_ for input_ in workflow.inputs])  # noqa: T203
 
-    # TODO Now the workflow can be configured. We could hide that from the user.
-    wf: Workflow = StepBuilder()(workflow)
-
-    config = wf.save_config(OUTPUT_DIR)
+    config = workflow.save_config(OUTPUT_DIR)
 
     run_cwl(OUTPUT_DIR / f"{workflow.name}.cwl", config_file=config, cwd=STAGING_DIR)

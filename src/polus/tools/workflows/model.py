@@ -21,6 +21,7 @@ from pydantic.functional_validators import field_validator
 from schema_salad.exceptions import ValidationException as CwlParserException
 from typing_extensions import Self
 
+import polus.tools.workflows.builders
 from polus.tools.workflows.default_ids import extract_name_from_id
 from polus.tools.workflows.default_ids import generate_cwl_source_repr
 from polus.tools.workflows.exceptions import BadCwlProcessFileError
@@ -692,6 +693,11 @@ class Workflow(Process):
             msg = "bad class"
             raise Exception(msg, class_)
         return class_
+
+    def save_config(self, path: Path = Path()) -> Path:
+        """Generate config file for the configured workflow."""
+        wf: Workflow = polus.tools.workflows.builders.StepBuilder()(self)
+        return wf.save_config(path)
 
 
 class CommandLineTool(Process):

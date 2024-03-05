@@ -83,7 +83,7 @@ def run_cwl(
     # TODO REMOVE temp hack for conveniently running
     # those workflows.
     # Figure out how to tell cwl to create the
-    # directories first (check listing etc...)
+    # directories first.
     if config_file:
         with Path.open(config_file) as file:
             config = yaml.safe_load(file)

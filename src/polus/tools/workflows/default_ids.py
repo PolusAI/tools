@@ -48,19 +48,14 @@ def generate_workflow_io_id(
     return worklflow_id + "___" + step_id + "___" + io_id
 
 
-# TODO remove path arg
-def generate_default_input_path(
-    step_id: str,
-    input_id: str,
-    path: Path = Path(),
-) -> Path:
+def generate_default_input_path(step_id: str, input_id: str) -> Path:
     """Generate default input path for synthetic directories or files."""
     # NOTE there is a limitation in cwl that prevents creating nested
     # directories.
     # When copying back staged data, cwl only copies the leaf directory.
     # Name clashes will occur if several inputs have the same name.
     # so we need to create unique directory names for each input.
-    return path / (step_id + "__" + input_id)
+    return Path() / (step_id + "__" + input_id)
 
 
 def extract_name_from_id(id_: str) -> str:

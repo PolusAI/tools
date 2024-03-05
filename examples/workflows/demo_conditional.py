@@ -46,7 +46,7 @@ wf = WorkflowBuilder(workdir=OUTPUT_DIR)(
 
 # save files
 wf_file = wf.save(OUTPUT_DIR)
-config_file = StepBuilder()(wf).save_config(OUTPUT_DIR)
+config_file = wf.save_config(OUTPUT_DIR)
 
 # execute locally
 run_cwl(wf_file, config_file=config_file, cwd=STAGING_DIR)
