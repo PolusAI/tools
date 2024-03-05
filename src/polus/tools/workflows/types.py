@@ -18,6 +18,7 @@ from pydantic import WrapSerializer
 PythonValue = Any
 CWLValue = Union[dict, list, PythonValue]
 Expression = str
+SerializedModel = Union[dict, list, PythonValue]
 
 
 class CWLBaseType(BaseModel, metaclass=abc.ABCMeta):
@@ -47,10 +48,12 @@ def process_type(type_: Any) -> "CWLType":  # noqa: ANN401
 def serialize_type(
     type_: "CWLType",
     nxt: Optional[SerializerFunctionWrapHandler] = None,  # noqa
-) -> Union[dict, str]:
+) -> SerializedModel:
     """Serialize CWLTypes based on actual type."""
     if isinstance(type_, CWLBasicType):
         return type_.type_.value
+    if isinstance(type_, CWLArray) and isinstance(type_.items, CWLBasicType):
+        return type_.items.type_.value + "[]"
     return {"type": "array", "items": serialize_type(type_.items)}
 
 

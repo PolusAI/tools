@@ -297,6 +297,7 @@ class WorkflowBuilder:
                 workflow_input = WorkflowInputParameter(
                     id=workflow_input_id,
                     type=input_.type_,
+                    optional=input_.optional,
                 )
                 input_.source = workflow_input_id
                 workflow_inputs.append(workflow_input)

@@ -1,7 +1,10 @@
 """Utils."""
 
 from pathlib import Path
+from urllib.parse import unquote
+from urllib.parse import urlparse
 
+from polus.tools.workflows.exceptions import BadCwlProcessFileError
 from polus.tools.workflows.exceptions import NotAFileError
 
 
@@ -46,3 +49,19 @@ def directory_exists(path: Path) -> Path:
     if not path.is_dir():
         raise NotADirectoryError(path)
     return path
+
+
+def process_exists_locally(id_: str) -> str:
+    """Check that the process exists locally.
+
+    Args:
+        id_: id of the process.
+    """
+    try:
+        path = Path(unquote(urlparse(id_).path))
+        path = file_exists(path)
+    except (ValueError, FileNotFoundError, NotAFileError) as e:
+        raise BadCwlProcessFileError(id_) from e
+    if path.suffix != ".cwl":
+        raise BadCwlProcessFileError(id_)
+    return id_

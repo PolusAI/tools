@@ -166,3 +166,5 @@ poetry.lock
 
 #tmp
 /tmp
+
+/examples/workflows/debug_*.py

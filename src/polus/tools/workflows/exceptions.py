@@ -5,6 +5,7 @@ from typing import Union
 
 from polus.tools.workflows.types import CWLType
 from polus.tools.workflows.types import PythonValue
+from polus.tools.workflows.types import SerializedModel
 
 
 class NotAFileError(Exception):
@@ -26,7 +27,7 @@ class IncompatibleTypeError(Exception):
 class UnexpectedTypeError(Exception):
     """Raised if type is not supported."""
 
-    def __init__(self, type_: CWLType) -> None:
+    def __init__(self, type_: SerializedModel) -> None:
         """Init UnexpectedTypeError."""
         super().__init__(f"unexpected type : {type_}")
 
@@ -41,6 +42,18 @@ class IncompatibleValueError(Exception):
             to parameter: "{io_id}"\
             of type: "{type_}"',
         )
+
+
+class OutputAssignmentError(Exception):
+    """Raised if we try to assign to a workflow output."""
+
+    def __init__(self, name: str) -> None:
+        """Init UnsupportedProcessClassError."""
+        msg = (
+            f"Cannot assign to a workflow output."
+            f" Tried to assign value to output: {name}"
+        )
+        super().__init__(msg)
 
 
 class InvalidFormatError(Exception):
@@ -80,7 +93,7 @@ class BadCwlProcessFileError(Exception):
 
 
 class UnsupportedCaseError(Exception):
-    """Raise if we have a logic error or did not anticipate a use case."""
+    """Raised if we have a logic error or did not anticipate a use case."""
 
     pass
 
@@ -88,7 +101,7 @@ class UnsupportedCaseError(Exception):
 class WhenClauseValidationError(Exception):
     """WhenClauseValidationError.
 
-    Raise whenever the when clause is invalid.
+    Raised whenever the when clause is invalid.
     """
 
     pass
@@ -97,7 +110,7 @@ class WhenClauseValidationError(Exception):
 class ScatterValidationError(Exception):
     """ScatterValidationError.
 
-    Raise whenever the scattered inputs configuration is invalid.
+    Raised whenever the scattered inputs configuration is invalid.
     """
 
     pass

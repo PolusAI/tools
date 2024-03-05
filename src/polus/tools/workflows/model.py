@@ -17,16 +17,19 @@ from pydantic import Field
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import WrapSerializer
 from pydantic import field_serializer
+from pydantic import model_serializer
+from pydantic import model_validator
 from pydantic.functional_validators import AfterValidator
 from pydantic.functional_validators import field_validator
 from schema_salad.exceptions import ValidationException as CwlParserException
+from typing_extensions import Self
 
 from polus.tools.workflows.default_ids import generate_cwl_source_repr
 from polus.tools.workflows.exceptions import BadCwlProcessFileError
 from polus.tools.workflows.exceptions import IncompatibleTypeError
 from polus.tools.workflows.exceptions import IncompatibleValueError
 from polus.tools.workflows.exceptions import InvalidFormatError
-from polus.tools.workflows.exceptions import NotAFileError
+from polus.tools.workflows.exceptions import OutputAssignmentError
 from polus.tools.workflows.exceptions import ScatterValidationError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
 from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
@@ -39,11 +42,14 @@ from polus.tools.workflows.model_extra import InputBinding
 from polus.tools.workflows.model_extra import LoadListingEnum
 from polus.tools.workflows.model_extra import PickValueMethod
 from polus.tools.workflows.model_extra import SecondaryFileSchema
+from polus.tools.workflows.types import CWLArray
+from polus.tools.workflows.types import CWLBasicType
 from polus.tools.workflows.types import CWLBasicTypeEnum
 from polus.tools.workflows.types import CWLType
 from polus.tools.workflows.types import CWLValue
 from polus.tools.workflows.types import Expression
 from polus.tools.workflows.types import PythonValue
+from polus.tools.workflows.types import SerializedModel
 from polus.tools.workflows.utils import directory_exists
 from polus.tools.workflows.utils import file_exists
 
@@ -70,35 +76,59 @@ class Parameter(CwlDocExtra):
 
     id_: ParameterId = Field(..., alias="id")
     type_: CWLType = Field(..., alias="type")
-    # TODO make optional a parameter so it cannot be set
-    # but only derived from type.
-    # Check if we will still be able to retrieve it in the
-    # type field validator.
-    optional: bool = Field(False, exclude=True)
+    optional: bool = Field(False, exclude=True)  # TODO make optional unsettable?
     format_: Optional[Union[str, list[str], Expression]] = Field(None, alias="format")
 
-    @field_validator("type_", mode="before")
-    @classmethod
-    # TODO CHECK type of optional
-    def transform_type(cls, type_: CWLType, optional: Any = None) -> CWLType:  # noqa
-        """Check if we have an optional type."""
-        if isinstance(type_, list):
-            # CHECK for optional types
-            if type_[0] == "null":
-                # TODO check alternatives.
-                # feels a bit hacky to modify the model this way.
-                optional.data["optional"] = True
-                return cls.transform_type(type_[1])
-            raise UnexpectedTypeError(type_)
-        return type_
+    @model_serializer(mode="wrap", when_used="always")
+    def serialize_model(self, nxt: Any) -> SerializedModel:  # noqa ANN401
+        """When serializing, add optional info in the type."""
+        # NOTE here we favor syntactic sugar for simple types.
+        if self.optional:
+            add_trailing_question_mark = False
+            if isinstance(self.type_, CWLBasicType):
+                add_trailing_question_mark = True
+            # TODO Implement syntactic sugar for arrays?
+            # Would only work if we used syntactic sugar for simple arrays.
+            if isinstance(self.type_, CWLArray) and isinstance(
+                self.type_.items,
+                CWLBasicType,
+            ):
+                add_trailing_question_mark = True
 
-    def model_post_init(self, __context: Any) -> None:  # noqa
+        serialized = nxt(self)
+
+        if self.optional:
+            if add_trailing_question_mark:
+                serialized["type"] = str(serialized["type"]) + "?"
+            else:
+                serialized["type"] = ["null", serialized["type"]]
+        return serialized
+
+    @model_validator(mode="before")
+    def transform_type(self) -> Self:
+        """Check if we have an optional type."""
+        # we allow attribute name or alias
+        key = "type_" if self.get("type_") else "type"
+
+        if isinstance(self[key], list):
+            # CHECK for optional types
+            if self[key][0] == "null":
+                self["optional"] = True
+                self[key] = self[key][1]
+            else:
+                raise UnexpectedTypeError(self[key])
+        return self
+
+    @model_validator(mode="after")
+    def verify_format(self) -> Self:
+        """Check that format field is allowed."""
         if self.format_ and (
             not isinstance(self.type_, CWLType(CWLBasicTypeEnum.FILE))
             or not isinstance(self.type_, CWLType(items=CWLBasicTypeEnum.FILE))
         ):
             msg = "format only allowed with File or array of File."
             raise InvalidFormatError(msg)
+        return self
 
 
 class InputParameter(Parameter):
@@ -262,13 +292,8 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
             if self.type_ != value.type_:
                 raise IncompatibleTypeError(self.type_, value.type_)
             self.source = generate_cwl_source_repr(value.step_id, value.id_)
-        elif value is not None:
-            if not self.type_.is_value_assignable(value):
-                raise IncompatibleValueError(self.id_, self.type_, value)
-        else:
-            # TODO remove when poc is completed.
-            msg = "this case is not properly handled."
-            raise NotImplementedError(msg)
+        elif value is not None and not self.type_.is_value_assignable(value):
+            raise IncompatibleValueError(self.id_, self.type_, value)
         self.value = value
 
 
@@ -342,13 +367,13 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
 
     @field_serializer("out", when_used="always")
     @classmethod
-    def serialize_type(cls, out: WorkflowStepOutputs) -> list[str]:
+    def serialize_workflow_step_outputs(cls, out: WorkflowStepOutputs) -> list[str]:
         """When serializing, return only the list of ids."""
         return [output.id_ for output in out]
 
     @field_validator("out", mode="before")
     @classmethod
-    def preprocess_workflow_step_output(
+    def preprocess_workflow_step_outputs(
         cls,
         out: list[Union[str, dict[str, str]]],
     ) -> list[dict[str, str]]:
@@ -409,8 +434,7 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
             input_ = self._inputs[name]
             input_.set_value(value)
         elif self._outputs and name in self._outputs:
-            output = self._outputs[name]
-            output.set_value(value)
+            raise OutputAssignmentError(name)
         else:
             msg = f"undefined attribute {name}"
             raise AttributeError(msg)
@@ -461,28 +485,11 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
 
         file_path = path / (self.id_ + ".yaml")
         with Path.open(file_path, "w", encoding="utf-8") as file:
-            # TODO CHECK how configurable this process is.
-            # ex: we generate list but we could also generate dictionaries.
             file.write(yaml.dump(config))
             return file_path
 
 
-# TODO CHECK Unused
-def process_exists_locally(id_: str) -> str:
-    """Check the process id (which is an uri) points to an existing file on disk."""
-    # TODO check if we need that.
-    # NOTE when building new workflow, the file is not yet present on disk.
-    # NOTE we may have remote definitions. What to do then?
-    try:
-        path = Path(unquote(urlparse(id_).path))
-        path = file_exists(path)
-    except (ValueError, FileNotFoundError, NotAFileError) as e:
-        raise BadCwlProcessFileError(id_) from e
-    if path.suffix != ".cwl":
-        raise BadCwlProcessFileError(id_)
-    return id_
-
-
+# TODO CHECK this works with any valid id.
 def is_processid_uri(id_: str) -> str:
     """Check we have a valid uri."""
     # TODO throw custom exception?
@@ -507,7 +514,7 @@ class Process(CwlRequireExtra, CwlDocExtra):
     see (https://www.commonwl.org/user_guide/introduction/basic-concepts.html)
     """
 
-    # NOTE we decide to ignore extra attributes for now
+    # NOTE important ignore unknown attributes.
     model_config = ConfigDict(extra="ignore")
     model_config = ConfigDict(populate_by_name=True)
 
@@ -553,7 +560,7 @@ class Process(CwlRequireExtra, CwlDocExtra):
         yaml_cwl = cwl_parser.save(cwl_process)
 
         if yaml_cwl["class"] == "Workflow" and yaml_cwl.get("steps"):
-            # by default, save rewrite all ids and refs.
+            # NOTE By default, save rewrite all ids and refs.
             # This would prevent us for recursively loading subprocesses so
             # for workflow we substitute with the original run references.
             full_refs_cwl = cwl_parser.save(cwl_process, relative_uris=False)

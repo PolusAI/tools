@@ -79,7 +79,10 @@ class CommandInputRecordField(CwlDocExtra):
     """CommandInputRecordField."""
 
     name: str
-    type_: Any = Field(..., alias="type")  # NOTE we could be more specific here.
+    type_: Any = Field(
+        ...,
+        alias="type",
+    )  # NOTE we would need to implement the last cwl types
     secondary_files: Optional[
         Union[SecondaryFileSchema, list[SecondaryFileSchema]]
     ] = Field(None, alias="secondaryFiles")
