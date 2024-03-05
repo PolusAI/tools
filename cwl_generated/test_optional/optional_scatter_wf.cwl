@@ -21,5 +21,4 @@ steps:
   scatter:
   - message
   - uppercase_message
-  scatterMethod: !!python/object/apply:polus.tools.workflows.model.ScatterMethodEnum
-  - dotproduct
+  scatterMethod: dotproduct

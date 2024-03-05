@@ -5,9 +5,9 @@ from pathlib import Path
 from polus.tools.workflows.backends import run_cwl
 from polus.tools.workflows.builders import StepBuilder
 from polus.tools.workflows.builders import WorkflowBuilder
+from polus.tools.workflows.exceptions import OutputAssignmentError
 from polus.tools.workflows.logger import get_logger
 from polus.tools.workflows.model import CommandLineTool
-from polus.tools.workflows.model import ScatterMethodEnum
 from polus.tools.workflows.utils import configure_folders
 
 FILE_NAME = Path(__file__).stem
@@ -23,29 +23,33 @@ clt_files = [
 
 (echo, uppercase) = (CommandLineTool.load(cwl_file) for cwl_file in clt_files)
 
-# scatter all inputs for echo
-scattered_inputs = [input_.id_ for input_ in echo.inputs]
-step1 = StepBuilder()(echo, scatter=scattered_inputs)
+step1 = StepBuilder()(echo)
+step2 = StepBuilder()(uppercase)
 
-# scatter all inputs for uppercase
-scattered_inputs = [input_.id_ for input_ in uppercase.inputs]
-step2 = StepBuilder()(
-    uppercase,
-    scatter=scattered_inputs,
-    # NOTE if not set default to dot_product
-    scatter_method=ScatterMethodEnum.flat_crossproduct,
-)
-
-# linking scattered steps
+# linking steps
 step2.message = step1.message_string
-step2.uppercase_message = step1.message_string
-
 # set some values for the first step.
-step1.message = ["hello", "world"]
+step1.message = "hello"
+
+# show what happened with some bad assignments.
+try:
+    step2.non_existing_input = step1.message_string
+except AttributeError as e:
+    logger.warn(e)
+
+try:
+    step2.uppercase_message = step1.non_existing_output
+except AttributeError as e:
+    logger.warn(e)
+
+try:
+    step1.message_string = step2.uppercase_message
+except OutputAssignmentError as e:
+    logger.warn(e)
 
 # build the workflow
 wf_builder = WorkflowBuilder(workdir=OUTPUT_DIR)
-wf = wf_builder("wf_scatter", steps=[step1, step2])
+wf = wf_builder("chek_assignment", steps=[step1, step2])
 
 # save files
 wf_file = wf.save(OUTPUT_DIR)
