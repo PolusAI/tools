@@ -3,17 +3,13 @@ cwlVersion: v1.2
 id: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/conditional-workflow.cwl
 inputs:
 - id: msg
-  type:
-    items: string
-    type: array
+  type: string[]
 - id: should_touch
   type: int
 outputs:
 - id: new_file
   outputSource: touch/output
-  type:
-    items: File
-    type: array
+  type: File[]
 requirements:
 - class: InlineJavascriptRequirement
 - class: ScatterFeatureRequirement

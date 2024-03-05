@@ -15,6 +15,8 @@ from pydantic import Field
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import WrapSerializer
 
+import polus.tools.workflows.exceptions
+
 PythonValue = Any
 CWLValue = Union[dict, list, PythonValue]
 Expression = str
@@ -35,13 +37,15 @@ class CWLBaseType(BaseModel, metaclass=abc.ABCMeta):
         pass
 
 
-def process_type(type_: Any) -> "CWLType":  # noqa: ANN401
+def process_type(type_: Union[SerializedModel, "CWLType"]) -> "CWLType":
     """Factory for the concrete type."""
     if isinstance(type_, str):
         return CWLBasicType(type=type_)
     if isinstance(type_, dict):
         return CWLArray(**type_)
-    return type_
+    if isinstance(type_, (CWLArray, CWLBasicType)):
+        return type_
+    raise polus.tools.workflows.exceptions.UnexpectedTypeError(type_)
 
 
 # TODO check if we should make use of nxt

@@ -3,15 +3,11 @@ cwlVersion: v1.2
 id: file:///Users/antoinegerardin/Documents/projects/polus-tools/optional_scatter_wf.cwl
 inputs:
 - id: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___message
-  type:
-    items: string
-    type: array
+  type: string[]
 outputs:
 - id: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___uppercase_message
   outputSource: 0__step__uppercase2_wic_compatible2_optional/uppercase_message
-  type:
-    items: string
-    type: array
+  type: string[]
 requirements:
 - class: ScatterFeatureRequirement
 steps:

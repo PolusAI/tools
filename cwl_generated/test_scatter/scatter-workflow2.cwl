@@ -3,15 +3,11 @@ cwlVersion: v1.2
 id: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/scatter-workflow2.cwl
 inputs:
 - id: msg
-  type:
-    items: string
-    type: array
+  type: string[]
 outputs:
 - id: new_file
   outputSource: touch/output
-  type:
-    items: File
-    type: array
+  type: File[]
 requirements:
 - class: ScatterFeatureRequirement
 steps:

@@ -4,8 +4,6 @@ id: file:///Users/antoinegerardin/Documents/projects/polus-tools/optional_scatte
 inputs:
 - id: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___message
   type: string[]
-- id: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___uppercase_message
-  type: string[]?
 outputs:
 - id: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___uppercase_message
   outputSource: 0__step__uppercase2_wic_compatible2_optional/uppercase_message
@@ -17,8 +15,6 @@ steps:
   in:
   - id: message
     source: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___message
-  - id: uppercase_message
-    source: optional_scatter_wf___0__step__uppercase2_wic_compatible2_optional___uppercase_message
   out:
   - uppercase_message
   run: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/uppercase2_wic_compatible2_optional.cwl
