@@ -110,7 +110,8 @@ class Parameter(CwlDocExtra):
         key = "type_" if self.get("type_") else "type"
 
         if isinstance(self[key], list):
-            # CHECK for optional types
+            # optional types are implemented as list
+            # with first element set to null
             if self[key][0] == "null":
                 self["optional"] = True
                 self[key] = self[key][1]
@@ -173,8 +174,6 @@ class WorkflowOutputParameter(OutputParameter):
     """
 
     model_config = ConfigDict(populate_by_name=True)
-
-    # TODO CHECK maybe add additional constraints?
     output_source: str = Field(..., alias="outputSource")
 
     secondary_files: Optional[
@@ -214,7 +213,6 @@ class CommandOutputParameter(OutputParameter):
     streamable: Optional[bool] = None
 
 
-# TODO CHECK if we need extra validation.
 def is_valid_stepio_id(id_: str) -> str:
     """Check if we have a valid step input/output io id."""
     return id_
@@ -288,7 +286,6 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         exclude=True,
         alias="format",
     )
-
     value: PythonValue = None
     optional: bool = Field(exclude=True)
     step_id: str
@@ -385,6 +382,12 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
     def _outputs(self) -> dict[StepIOId, WorkflowStepOutput]:
         """Generate a dict of WorkflowStepOutputs for efficient retrieval."""
         return {output.id_: output for output in self.out}
+
+    @field_serializer("scatter_method", when_used="always")
+    @classmethod
+    def serialize_scatter_method(cls, scatter_method: ScatterMethodEnum) -> str:
+        """When serializing, return only the list of ids."""
+        return scatter_method.value
 
     @field_serializer("out", when_used="always")
     @classmethod

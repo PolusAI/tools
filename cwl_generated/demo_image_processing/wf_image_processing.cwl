@@ -9,7 +9,7 @@ inputs:
 - id: wf_image_processing___1__step__FileRenaming___filePattern
   type: string
 - id: wf_image_processing___1__step__FileRenaming___mapDirectory
-  type: string
+  type: string?
 - id: wf_image_processing___1__step__FileRenaming___outDir
   type: Directory
 - id: wf_image_processing___1__step__FileRenaming___outFilePattern
@@ -23,15 +23,15 @@ inputs:
 - id: wf_image_processing___3__step__Montage___filePattern
   type: string
 - id: wf_image_processing___3__step__Montage___layout
-  type: string
+  type: string?
 - id: wf_image_processing___3__step__Montage___outDir
   type: Directory
 - id: wf_image_processing___4__step__ImageAssembler___outDir
   type: Directory
 - id: wf_image_processing___5__step__PrecomputeSlide___filePattern
-  type: string
+  type: string?
 - id: wf_image_processing___5__step__PrecomputeSlide___imageType
-  type: string
+  type: string?
 - id: wf_image_processing___5__step__PrecomputeSlide___outDir
   type: Directory
 - id: wf_image_processing___5__step__PrecomputeSlide___pyramidType

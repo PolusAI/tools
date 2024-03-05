@@ -21,6 +21,7 @@ from polus.tools.workflows.exceptions import WhenClauseValidationError
 from polus.tools.workflows.model import AssignableWorkflowStepInput
 from polus.tools.workflows.model import AssignableWorkflowStepOutput
 from polus.tools.workflows.model import Process
+from polus.tools.workflows.model import ScatterMethodEnum
 from polus.tools.workflows.model import Workflow
 from polus.tools.workflows.model import WorkflowInputParameter
 from polus.tools.workflows.model import WorkflowOutputParameter
@@ -50,6 +51,7 @@ class StepBuilder:
         self,
         process: Process,
         scatter: Optional[list[str]] = None,
+        scatter_method: Optional[ScatterMethodEnum] = None,
         when: Optional[str] = None,
         add_inputs: Optional[list[dict]] = None,
         when_input_names: Optional[list[str]] = None,
@@ -113,6 +115,7 @@ class StepBuilder:
 
         self.step = WorkflowStep(
             scatter=scatter,
+            scatter_method=scatter_method,
             when=when,
             id=step_id,
             run=run,
