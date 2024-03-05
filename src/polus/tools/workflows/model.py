@@ -299,10 +299,11 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
             if self.type_ != value.type_:
                 raise IncompatibleTypeError(self.type_, value.type_)
             self.check_format(value)
-            self.source = generate_cwl_source_repr(value.step_id, value.id_)
-        elif value is not None and not self.type_.is_value_assignable(value):
+            source = generate_cwl_source_repr(value.step_id, value.id_)
+            return super().__setattr__("source", source)
+        if value is not None and not self.type_.is_value_assignable(value):
             raise IncompatibleValueError(self.id_, self.type_, value)
-        self.value = value
+        return super().__setattr__("value", value)
 
     def check_format(self: Self, value: AssignableWorkflowStepOutput) -> None:
         """Check that formats are compatible."""
@@ -313,6 +314,21 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
                 f"assigning output: {value.id_} to input: {self.id_}."
                 f"formats do not match. Got {self.format_} and {value.format_}",
             )
+
+    def __setattr__(
+        self,
+        name: str,
+        value: Any,  # noqa: ANN401
+    ) -> None:
+        """This is enabling assignment in our python DSL.
+
+        This method specifically allow us to assign values to input directly,
+        using this notation `step.in_[1].value = value`
+        """
+        if name == "value":
+            self.set_value(value)
+            return None
+        return super().__setattr__(name, value)
 
 
 WorkflowStepId = Annotated[str, []]
@@ -445,7 +461,7 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
     def __setattr__(
         self,
         name: str,
-        value: Union[PythonValue, AssignableWorkflowStepOutput],
+        value: Any,  # noqa: ANN401
     ) -> None:
         """This is enabling assignment in our python DSL."""
         # model properties are accessed normally,

@@ -233,7 +233,7 @@ class WorkflowBuilder:
         self.workdir = kwds.get("workdir", Path())
         self.recursive = kwds.get("recursive", True)
         self.context = kwds.get("context", {})
-        self.add_step_index = kwds.get("recursive", True)
+        self.add_step_index = kwds.get("add_step_index", True)
 
     def __call__(self, id_: str, steps: list[WorkflowStep]) -> Workflow:  # C901
         """Build a workflow and save the cwl specification file."""
