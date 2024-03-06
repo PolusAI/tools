@@ -1,5 +1,6 @@
 """The main cwl models."""
 
+from collections.abc import KeysView
 from pathlib import Path
 from typing import Annotated
 from typing import Any
@@ -289,6 +290,25 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
             self.check_format(value)
             source = generate_cwl_source_repr(value.step_id, value.id_)
             return super().__setattr__("source", source)
+
+        if isinstance(value, list):
+            multi_inputs = False
+            for val in value:
+                if multi_inputs and not isinstance(val, AssignableWorkflowStepOutput):
+                    raise IncompatibleValueError(self.id_, self.type_, value)
+                if isinstance(val, AssignableWorkflowStepOutput):
+                    multi_inputs = True
+            if multi_inputs:
+                multiple_sources = []
+                for val in value:
+                    if self.type_ != CWLArray(items=val.type_):
+                        raise IncompatibleTypeError(self.type_, val.type_)
+                    self.check_format(val)
+                    multiple_sources.append(
+                        generate_cwl_source_repr(val.step_id, val.id_),
+                    )
+                return super().__setattr__("source", multiple_sources)
+
         if value is not None and not self.type_.is_value_assignable(value):
             raise IncompatibleValueError(self.id_, self.type_, value)
         return super().__setattr__("value", value)
@@ -320,7 +340,13 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         return super().__setattr__(name, value)
 
 
-WorkflowStepId = Annotated[str, []]
+def check_valid_workflow_step_id(id_: str) -> str:
+    """Check if we have a valid workflow step id."""
+    # NOTE we could try to fix it or throw an error.
+    return id_.replace("-", "_")
+
+
+WorkflowStepId = Annotated[str, [check_valid_workflow_step_id]]
 
 
 def filter_unused_optional(
@@ -521,6 +547,14 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
         with Path.open(file_path, "w", encoding="utf-8") as file:
             file.write(yaml.dump(config))
             return file_path
+
+    def input_ids(self) -> KeysView:
+        """Return all step input ids."""
+        return self._inputs.keys()
+
+    def output_ids(self) -> KeysView:
+        """Return all step output ids."""
+        return self._outputs.keys()
 
 
 # Placeholder for extra checks.

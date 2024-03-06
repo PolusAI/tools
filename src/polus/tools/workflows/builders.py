@@ -29,6 +29,7 @@ from polus.tools.workflows.model import WorkflowOutputParameter
 from polus.tools.workflows.model import WorkflowStep
 from polus.tools.workflows.model import WorkflowStepInput
 from polus.tools.workflows.requirements import InlineJavascriptRequirement
+from polus.tools.workflows.requirements import MultipleInputFeatureRequirement
 from polus.tools.workflows.requirements import ProcessRequirement
 from polus.tools.workflows.requirements import ScatterFeatureRequirement
 from polus.tools.workflows.requirements import SubworkflowFeatureRequirement
@@ -56,7 +57,8 @@ class StepBuilder:
     def __call__(  # noqa: PLR0913
         self,
         process: Process,
-        scatter: Optional[list[str]] = None,
+        id_: Optional[str] = None,
+        scatter: Optional[Union[str, list[str]]] = None,
         scatter_method: Optional[ScatterMethodEnum] = None,
         when: Optional[str] = None,
         add_inputs: Optional[list[dict]] = None,
@@ -69,6 +71,7 @@ class StepBuilder:
 
         Args:
             process: the process to wrap in a step
+            id_: step id (generated if not provided)
             scatter: (optional) list of inputs to scatter
             scatter_method: (optional) if multiple inputs, decide how to deal with them.
             when: (optional) a conditional clause for this step
@@ -77,7 +80,9 @@ class StepBuilder:
             when_input_names: (optional) list of inputs that appear in
                 the when expression.
         """
-        if self.generate_step_id:
+        if id_:
+            step_id = id_
+        elif self.generate_step_id:
             step_id = self.generate_step_id(process.name)
         else:
             step_id = generate_default_step_id(process.name)
@@ -148,14 +153,12 @@ class StepBuilder:
         if isinstance(process, Workflow):
             for step in process.steps:
                 for input_ in step.in_:
-                    if (
-                        isinstance(input_, AssignableWorkflowStepInput)
-                        and input_.source in self.step._inputs
-                    ):
+                    if isinstance(input_, AssignableWorkflowStepInput):
                         if isinstance(input_.source, list):
                             for source in input_.source:
-                                self.step._inputs[source].value = input_.value
-                        else:
+                                if source in self.step._inputs:
+                                    self.step._inputs[source].value = input_.value
+                        elif input_.source in self.step._inputs:
                             self.step._inputs[input_.source].value = input_.value
 
         return self.step
@@ -259,7 +262,11 @@ class WorkflowBuilder:
         self.context = kwds.get("context", {})
         self.add_step_index = kwds.get("add_step_index", True)
 
-    def __call__(self, id_: str, steps: list[WorkflowStep]) -> Workflow:  # C901
+    def __call__(  # noqa: PLR0912,C901
+        self,
+        id_: str,
+        steps: list[WorkflowStep],
+    ) -> Workflow:
         """Build a workflow and save the cwl specification file."""
         if not steps:
             steps = []
@@ -279,6 +286,7 @@ class WorkflowBuilder:
         scatter_requirement = False
         subworkflow_feature_requirement = False
         inline_javascript_requirement = False
+        multiple_input_feature_requirement = False
 
         if self.add_step_index:
             self.update_steps_references_with_index(steps)
@@ -343,6 +351,11 @@ class WorkflowBuilder:
                 )
                 workflow_outputs.append(workflow_output)
 
+        for step in steps:
+            for input_ in step.in_:
+                if input_.source is not None and isinstance(input_.source, list):
+                    multiple_input_feature_requirement = True
+
         # NOTE if extra check on the whole model need to be performed, this
         # can be done here. If recursive option is set to True,
         # context will contain all process models.
@@ -351,6 +364,7 @@ class WorkflowBuilder:
             scatter_requirement,
             subworkflow_feature_requirement,
             inline_javascript_requirement,
+            multiple_input_feature_requirement,
         )
 
         id_ = generate_worklfow_id(self.workdir, id_)
@@ -414,6 +428,7 @@ class WorkflowBuilder:
         scatter_requirement: bool,
         subworkflow_feature_requirement: bool,
         inline_javascript_requirement: bool,
+        multiple_input_feature_requirement: bool,
     ) -> list[ProcessRequirement]:
         """Return a list of Process Requirements."""
         requirements = []
@@ -423,6 +438,8 @@ class WorkflowBuilder:
             requirements.append(SubworkflowFeatureRequirement())
         if inline_javascript_requirement:
             requirements.append(InlineJavascriptRequirement())
+        if multiple_input_feature_requirement:
+            requirements.append(MultipleInputFeatureRequirement())
         return requirements
 
     def update_steps_references_with_index(

@@ -76,6 +76,12 @@ class InitialWorkDirRequirement(ProcessRequirement):
     listing: list[Any]  # : ANN401
 
 
+class MultipleInputFeatureRequirement(ProcessRequirement):
+    """MultipleInputFeatureRequirement."""
+
+    class_: str = "MultipleInputFeatureRequirement"
+
+
 class EnvironmentDef(BaseModel):
     """EnvironmentDef."""
 

@@ -53,18 +53,8 @@ This tool supports creating workflows containing:
 - subworkflows
 - conditional clauses
 - scattered inputs
+- multiple inputs
 
-Current limitations.
-- We enforce using only the latest
-    [cwl standard version](https://www.commonwl.org/v1.2/).
-- MultipleInputFeatureRequirement is not supported for building workflows
-See [section](https://www.commonwl.org/v1.2/Workflow.html#WorkflowStepInput)
-
-
-### Status
-
-This tool is an early stage of development so its api is still expected to evolve
-in quick iterations.
 
 ### Developers
 
