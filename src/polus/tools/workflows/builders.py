@@ -1,6 +1,7 @@
 """Builders."""
 
 from pathlib import Path
+from typing import Callable
 from typing import Optional
 from typing import TypedDict
 from typing import Union
@@ -43,9 +44,14 @@ class StepBuilder:
     Step can also be used to generate configuration for a process.
     """
 
-    def __init__(self) -> None:
-        """Set up Step factory."""
-        pass
+    def __init__(self, generate_step_id: Optional[Callable[[str], str]] = None) -> None:
+        """Set up Step factory.
+
+        Args:
+         generate_step_id: function to be called on the process name and
+         that returns a derived step_id.
+        """
+        self.generate_step_id = generate_step_id
 
     def __call__(  # noqa: PLR0913
         self,
@@ -60,10 +66,22 @@ class StepBuilder:
 
         Create a WorkflowStep from a Process.
         For each input/output of the clt, a corresponding step in/out is created.
+
+        Args:
+            process: the process to wrap in a step
+            scatter: (optional) list of inputs to scatter
+            scatter_method: (optional) if multiple inputs, decide how to deal with them.
+            when: (optional) a conditional clause for this step
+            add_inputs: (optional) list of extra inputs (not defined in the process)
+                to add to this step.
+            when_input_names: (optional) list of inputs that appear in
+                the when expression.
         """
-        # TODO we could make this a default strategy that
-        # can be overriden by the user.
-        step_id = generate_default_step_id(process.name)
+        if self.generate_step_id:
+            step_id = self.generate_step_id(process.name)
+        else:
+            step_id = generate_default_step_id(process.name)
+
         run = process.id_
 
         inputs = [
@@ -249,12 +267,10 @@ class WorkflowBuilder:
         # Collect all step inputs and create a workflow input for each
         # Collect all step outputs and create a workflow output for each
         # NOTE For now each output from each step creates an output.
-        # TODO Make this optional.
-        # TODO We could also reduced workflow outputs to only those
+        # We could also reduced workflow outputs to only those
         # which are not already connected.
-        # TODO Similarly we could have an option to hide/rename
-        # workflow inputs.
-        # TODO Many possible strategies here:
+        # NOTE Similarly we could have an option to rename workflow inputs.
+        # Many possible strategies here:
         # We could change that, make that a user provided option,
         # generate simpler names if no clash are detected
         # or provide ability for aliases...

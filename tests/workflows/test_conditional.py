@@ -170,7 +170,7 @@ def test_run_positive(conditional_workflow: Workflow) -> None:
     input_values += [f"--{input_names[1]}={should_execute}"]
     run_cwl(wf_cwl_file, extra_args=input_values, cwd=STAGING_DIR)
 
-    # TODO CHECK why we get those trailing \n
+    # NOTE not quite sure why we get those trailing \n\n
     path = Path(Path(STAGING_DIR / filename.upper()).as_posix() + "\n\n")
 
     # test existence

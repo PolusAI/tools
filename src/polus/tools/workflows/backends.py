@@ -76,7 +76,7 @@ def run_cwl(
     if extra_args:
         cmd = cmd + extra_args
 
-    # TODO REMOVE temp hack for conveniently running
+    # TODO hack for conveniently running
     # those workflows.
     # Figure out how to tell cwl to create the
     # directories first.

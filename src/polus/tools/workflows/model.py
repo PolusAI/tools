@@ -121,7 +121,6 @@ class Parameter(CwlDocExtra):
     def serialize_model(self, nxt: Any) -> SerializedModel:  # noqa ANN401
         """When serializing, add optional info in the type."""
         # NOTE here we favor syntactic sugar for simple types.
-        # TODO we could make this a user option.
         if self.optional:
             add_trailing_question_mark = False
             if isinstance(self.type_, CWLBasicType):

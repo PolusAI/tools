@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
+from polus.tools.workflows.types import Expression
+
 
 class ProcessRequirement(BaseModel):
     """Base class for all process requirements."""
@@ -23,12 +25,19 @@ class SubworkflowFeatureRequirement(ProcessRequirement):
     class_: str = "SubworkflowFeatureRequirement"
 
 
+class SoftwarePackages(BaseModel):
+    """SoftwarePackages."""
+
+    package: str
+    version: Optional[list[str]]
+    specs: Optional[list[str]]
+
+
 class SoftwareRequirement(ProcessRequirement):
     """Software requirements."""
 
     class_: str = "SoftwareRequirement"
-    # TODO we could further constrained if needed
-    packages: list[Any]  # : ANN401
+    packages: list[SoftwarePackages]
 
 
 class DockerRequirement(ProcessRequirement):
@@ -64,8 +73,14 @@ class InitialWorkDirRequirement(ProcessRequirement):
     """InitialWorkDirRequirement."""
 
     class_: str = "InitialWorkDirRequirement"
-    # TODO we could flesh this out
     listing: list[Any]  # : ANN401
+
+
+class EnvironmentDef(BaseModel):
+    """EnvironmentDef."""
+
+    env_name: str = Field(None, alias="envName")
+    env_value: Union[str, Expression] = Field(None, alias="envValue")
 
 
 class EnvVarRequirement(ProcessRequirement):
@@ -74,8 +89,7 @@ class EnvVarRequirement(ProcessRequirement):
     model_config = ConfigDict(populate_by_name=True)
 
     class_: str = "EnvVarRequirement"
-    # TODO CHECK if we need stricter typing
-    env_def: dict[str, Any] = Field(None, alias="envDef")  # : ANN401
+    env_def: list[EnvironmentDef] = Field([], alias="envDef")
 
 
 class ResourceRequirement(ProcessRequirement):
@@ -104,11 +118,12 @@ class SchemaDefRequirement(BaseModel):
 
 
 class NetworkAccess(ProcessRequirement):
-    """NetworkAccess."""
+    """NetworkAccess.
+
+    https://www.commonwl.org/v1.2/CommandLineTool.html#NetworkAccess.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
     class_: str = "NetworkAccess"
-    # TODO could make this stricter
-    # https://www.commonwl.org/v1.2/CommandLineTool.html#NetworkAccess
-    network_access: bool = Field(True, alias="networkAccess")
+    network_access: Union[bool, Expression] = Field(True, alias="networkAccess")
