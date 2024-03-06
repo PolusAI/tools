@@ -179,8 +179,6 @@ class StepBuilder:
         Inputs referenced in the when clause may or may not be already declared
         if the process. If not, user must provide a description of it.
         """
-        # TODO we could evaluate the clause rather than having the user declare
-        # explicitly.
         if when:
             if not when_input_names:
                 msg = "You need to specify which inputs\
@@ -359,8 +357,6 @@ class WorkflowBuilder:
         and bubble it up as a workflow input value.
         This allows further manual customization.
         """
-        # TODO we could also expose that the user and have him customized
-        # the generated name.
         if input_.id_ not in step._outputs:
             return None
         # if input is output, build its source representation
@@ -374,8 +370,7 @@ class WorkflowBuilder:
                     # NOTE Review later. It may be allowable to link
                     # (nested) array of dirs.
                     # But then we cannot anticipate the number of
-                    # directories to create
-                    # before runtime.
+                    # directories to create before runtime.
                     if not (
                         _input.type_ != CWLBasicType(type=CWLBasicTypeEnum.DIRECTORY)
                         or _input.type_ != CWLBasicType(type=CWLBasicTypeEnum.FILE)
@@ -399,8 +394,6 @@ class WorkflowBuilder:
         """Return a list of Process Requirements."""
         requirements = []
         if scatter_requirement:
-            # TODO CHECK cwl spec. if multiple inputs,
-            # we also need to add a scatter method.
             requirements.append(ScatterFeatureRequirement())
         if subworkflow_feature_requirement:
             requirements.append(SubworkflowFeatureRequirement())

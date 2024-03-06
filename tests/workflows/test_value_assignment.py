@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from polus.tools.workflows.builders import StepBuilder
 from polus.tools.workflows.model import AssignableWorkflowStepInput
+from polus.tools.workflows.model import Process
 from polus.tools.workflows.types import CWLBasicType
 from polus.tools.workflows.types import CWLBasicTypeEnum
 
@@ -91,3 +93,29 @@ def test_assign_nested_array(default_input_model: dict[Any, Any]) -> None:
     assert not input_.type_.is_value_assignable(
         [["ok"], [4]],
     )  # cannot mix and match types.
+
+
+@pytest.mark.parametrize("filename", ["uppercase2_wic_compatible2.cwl"])
+def test_input_output_with_same_names(test_data_dir: Path, filename: str) -> None:
+    """Test assigning and getting inputs and outputs with the same name.
+
+    Test and document how this case is handled.
+    """
+    cwl_file = test_data_dir / filename
+    clt = Process.load(cwl_file)
+    step = StepBuilder()(clt)
+
+    value_set = "hello"
+    step.uppercase_message = (
+        value_set  # set will use input since assigning output is forbidden.
+    )
+
+    # since we have an input / output with the same name,
+    # we return the a tuple with both.
+    (uppercase_message_input, uppercase_message_output) = step.uppercase_message
+    assert (
+        uppercase_message_input.value == value_set
+    ), f"expected {value_set}, got {uppercase_message_input.value}"
+    assert (
+        uppercase_message_output.value is None
+    ), f"expected None, got {uppercase_message_output.value}"

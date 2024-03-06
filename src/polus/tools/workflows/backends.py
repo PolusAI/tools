@@ -38,12 +38,10 @@ def run_cwl(
 
     # make sure we run a file that exists on disk.
     # TODO CHECK we may want to remove that. cwltool can probably run remote defs!
-    # TODO TEST
     file_exists(process_file)
 
     # if we specify a cwd and the workflow file is not present,
     # make a copy in cwd. This is purely for convenience.
-    # TODO decide if we keep that option and/or update the id or not.
     if copy_cwl and process_file.parent != cwd:
         logger.warning(
             f"workflow cwl file: {process_file.as_posix()}\

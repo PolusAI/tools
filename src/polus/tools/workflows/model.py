@@ -378,7 +378,6 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
     are wrapping and describe to  which workflow inputs they connect.
     """
 
-    # needed because of the reserved keyword are used in the model.
     model_config = ConfigDict(populate_by_name=True)
 
     id_: WorkflowStepId = Field(..., alias="id")
@@ -471,6 +470,8 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
         if name in self.model_fields or name in ["_inputs", "_outputs"]:
             return super().__setattr__(name, value)
 
+        # NOTE assignement are made on inputs only,
+        # so check them first in case we have a input which is also an output.
         if self._inputs and name in self._inputs:
             input_ = self._inputs[name]
             input_.set_value(value)
@@ -481,21 +482,33 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
             raise AttributeError(msg)
         return None
 
-    def __getattr__(self, name: str) -> Union[WorkflowStepInput, WorkflowStepOutput]:
+    def __getattr__(
+        self,
+        name: str,
+    ) -> Union[
+        WorkflowStepInput,
+        WorkflowStepOutput,
+        tuple[WorkflowStepInput, WorkflowStepOutput],
+    ]:
         """This is enabling assignment in our python DSL."""
-        # TODO CHECK Note there is an ordering issues here
-        # if we ever need to check inputs because
-        # a input and an output can have the same name!
-        # NOTE we could disambiguate in from out if necessary
-        # NOTE similarly, we could create unique step name if necessary.
-        # (in case the same step is repeated n times).
+        input_, output = None, None
         if self._outputs and name in self._outputs:
-            return self._outputs[name]
+            output = self._outputs[name]
 
-        # TODO CHECK return defensive copy / read-only?
-        # we can use inputs to check property of the workflow
         if self._inputs and name in self._inputs:
-            return self._inputs[name]
+            input_ = self._inputs[name]
+
+        if input_ and output:
+            logger.warning(
+                f" step: {self.id_} has input and output of the same name: {name}"
+                "returning (input, output)",
+            )
+            return (input_, output)
+
+        if output:
+            return output
+        if input_:
+            return input_
 
         raise AttributeError
 
