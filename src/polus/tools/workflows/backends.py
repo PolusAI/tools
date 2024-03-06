@@ -36,8 +36,6 @@ def run_cwl(
         cwd = Path()  # by default we run cwltool in the current directory.
     cwd = cwd.resolve()
 
-    # make sure we run a file that exists on disk.
-    # TODO CHECK we may want to remove that. cwltool can probably run remote defs!
     file_exists(process_file)
 
     # if we specify a cwd and the workflow file is not present,

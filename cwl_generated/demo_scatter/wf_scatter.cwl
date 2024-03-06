@@ -8,8 +8,8 @@ outputs:
 - id: wf_scatter___0__step__echo_string___message_string
   outputSource: 0__step__echo_string/message_string
   type: string[]
-- id: wf_scatter___1__step__uppercase2_wic_compatible2___uppercase_message
-  outputSource: 1__step__uppercase2_wic_compatible2/uppercase_message
+- id: wf_scatter___1__step__uppercase2_wic_compatible2_optional___uppercase_message
+  outputSource: 1__step__uppercase2_wic_compatible2_optional/uppercase_message
   type: string[]
 requirements:
 - class: ScatterFeatureRequirement
@@ -23,7 +23,7 @@ steps:
   run: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/echo_string.cwl
   scatter:
   - message
-- id: 1__step__uppercase2_wic_compatible2
+- id: 1__step__uppercase2_wic_compatible2_optional
   in:
   - id: message
     source: 0__step__echo_string/message_string
@@ -31,7 +31,7 @@ steps:
     source: 0__step__echo_string/message_string
   out:
   - uppercase_message
-  run: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/uppercase2_wic_compatible2.cwl
+  run: file:///Users/antoinegerardin/Documents/projects/polus-tools/tests/workflows/test_data/uppercase2_wic_compatible2_optional.cwl
   scatter:
   - message
   - uppercase_message

@@ -31,13 +31,13 @@ from polus.tools.workflows.exceptions import OutputAssignmentError
 from polus.tools.workflows.exceptions import ScatterValidationError
 from polus.tools.workflows.exceptions import UnexpectedClassError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
-from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 from polus.tools.workflows.exceptions import UnsupportedProcessClassError
 from polus.tools.workflows.logger import get_logger
 from polus.tools.workflows.model_extra import CommandLineBinding
 from polus.tools.workflows.model_extra import CommandOutputBinding
 from polus.tools.workflows.model_extra import CwlDocExtra
 from polus.tools.workflows.model_extra import CwlRequireExtra
+from polus.tools.workflows.model_extra import CwlRootObject
 from polus.tools.workflows.model_extra import LinkMergeMethod
 from polus.tools.workflows.model_extra import LoadListingEnum
 from polus.tools.workflows.model_extra import PickValueMethod
@@ -59,7 +59,7 @@ logger = get_logger(__name__)
 
 def is_valid_parameter_id(id_: str) -> str:
     """Check if parameter id is valid."""
-    # No specific guidelines found in the spec.
+    # Check for specific guidelines in the spec.
     return id_
 
 
@@ -106,10 +106,13 @@ class Parameter(CwlDocExtra):
     @model_validator(mode="after")
     def verify_format(self) -> Self:
         """Check that format field is allowed."""
-        if self.format_ and (
-            not isinstance(self.type_, CWLType(CWLBasicTypeEnum.FILE))
-            or not isinstance(self.type_, CWLType(items=CWLBasicTypeEnum.FILE))
-        ):
+        if self.format_:
+            if self.type_ == CWLBasicType(
+                type_=CWLBasicTypeEnum.FILE,
+            ) or self.type_ == CWLArray(
+                items=CWLBasicType(type_=CWLBasicTypeEnum.FILE),
+            ):
+                return self
             msg = "format only allowed with File or array of File."
             raise InvalidFormatError(msg)
         return self
@@ -244,7 +247,7 @@ class WorkflowStepInput(CwlDocExtra):
     model_config = ConfigDict(populate_by_name=True)
 
     id_: StepIOId = Field(..., alias="id")
-    source: Optional[str]
+    source: Optional[Union[str, list[str]]]
 
     link_merge: Optional[LinkMergeMethod] = Field(None, alias="linkMerge")
     pick_value: Optional[PickValueMethod] = Field(None, alias="pickValue")
@@ -278,6 +281,9 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         value: Union[PythonValue, AssignableWorkflowStepOutput],
     ) -> None:
         """Assign a value to this step input or link it to another step output."""
+        if isinstance(value, tuple):
+            value = value[1]  # we can assign outputs to inputs.
+
         if isinstance(value, AssignableWorkflowStepOutput):
             if self.type_ != value.type_:
                 raise IncompatibleTypeError(self.type_, value.type_)
@@ -293,6 +299,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         if self.format_ and value.format_ and self.format_ != value.format_:
             # NOTE for now we just warn if formats are not equivalent.
             # we could do more advanced reasoning with ontologies if necessary.
+            # We can the namespace using $namespaces.
             logger.warning(
                 f"assigning output: {value.id_} to input: {self.id_}."
                 f"formats do not match. Got {self.format_} and {value.format_}",
@@ -521,7 +528,7 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
 ProcessId = Annotated[str, []]
 
 
-class Process(CwlRequireExtra, CwlDocExtra):
+class Process(CwlRequireExtra, CwlDocExtra, CwlRootObject):
     """Process is the base class for all cwl models.
 
     It is the base classes for Workflows,CommandLineTools
@@ -557,8 +564,10 @@ class Process(CwlRequireExtra, CwlDocExtra):
     @classmethod
     def validate_version(cls, version: str) -> str:
         """Check if the process version is v1.2."""
-        if version and version != "v1.2":
-            raise UnsupportedCwlVersionError(version)
+        # NOTE we log an warning instead
+        msg = f"Process refers to older cwl version {version}. Loading anyway."
+        logger.warning(msg)
+        # if version and version != "v1.2":
         return version
 
     @classmethod
@@ -700,7 +709,7 @@ class CommandLineTool(Process):
     stdin: Optional[str] = None
     stderr: Optional[str] = None
     stdout: Optional[str] = None
-    arguments: Optional[Union[str, Expression, CommandLineBinding]] = Field(None)
+    arguments: Optional[list[Union[str, Expression, CommandLineBinding]]] = Field(None)
     success_codes: Optional[list[int]] = Field(None, alias="successCodes")
     temporary_fail_codes: Optional[list[int]] = Field(None, alias="temporaryFailCodes")
     permanent_fail_codes: Optional[list[int]] = Field(None, alias="permanentFailCodes")

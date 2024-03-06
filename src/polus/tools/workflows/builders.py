@@ -95,7 +95,8 @@ class StepBuilder:
         self.process_when_clause(process, parsed_add_inputs, when, when_input_names)
 
         # Generate additional inputs.
-        # For example,if the conditional clause contains unknown inputs.
+        # For example, if the conditional clause contains unknown inputs.
+        # Or for use in valueFrom (https://www.commonwl.org/v1.2/Workflow.html#WorkflowStepInput)
         # NOTE It could also be used to generate fake inputs for wic compatibility.
         if parsed_add_inputs:
             inputs = inputs + [
@@ -133,8 +134,11 @@ class StepBuilder:
                         isinstance(input_, AssignableWorkflowStepInput)
                         and input_.source in self.step._inputs
                     ):
-                        self.step._inputs[input_.source].value = input_.value
-                        self.step._inputs[input_.source]
+                        if isinstance(input_.source, list):
+                            for source in input_.source:
+                                self.step._inputs[source].value = input_.value
+                        else:
+                            self.step._inputs[input_.source].value = input_.value
 
         return self.step
 
@@ -423,10 +427,22 @@ class WorkflowBuilder:
             step.id_ = updated_step_ids[step.id_]
             for input_ in step.in_:
                 if input_.source is not None:
-                    (source_step_id, param_id) = input_.source.split("/")
-                    input_.source = generate_cwl_source_repr(
-                        updated_step_ids[source_step_id],
-                        param_id,
-                    )
+                    if isinstance(input_.source, list):
+                        input_.source = [
+                            self._update_source(source, updated_step_ids)
+                            for source in input_.source
+                        ]
+                    else:
+                        input_.source = self._update_source(
+                            input_.source,
+                            updated_step_ids,
+                        )
 
         return steps
+
+    def _update_source(self, source: str, updated_step_ids: dict[str, str]) -> str:
+        (source_step_id, param_id) = source.split("/")
+        return generate_cwl_source_repr(
+            updated_step_ids[source_step_id],
+            param_id,
+        )

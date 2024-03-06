@@ -44,6 +44,19 @@ class PickValueMethod(str, Enum):
     all_non_null = "all_non_null"
 
 
+class CwlRootObject(BaseModel):
+    """Metadata found in root objects.
+
+    See https://www.commonwl.org/v1.2/SchemaSalad.html#Explicit_context
+    """
+
+    base: Optional[str] = Field(None, alias="$base")
+    namespaces: Optional[dict[str, str]] = Field(None, alias="$namespaces")
+    schemas: Optional[list[str]] = Field(None, alias="$schemas")
+
+    graph: Optional[list] = Field(None, alias="$graph")
+
+
 class CwlDocExtra(BaseModel):
     """Extra Model properties for documentation."""
 

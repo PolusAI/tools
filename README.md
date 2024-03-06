@@ -49,16 +49,16 @@ Other data directories:
 
 ### Current Workflow features
 
-This tool support creating workflows containing:
+This tool supports creating workflows containing:
 - subworkflows
 - conditional clauses
 - scattered inputs
 
 Current limitations.
-- We currently enforce using only the latest
+- We enforce using only the latest
     [cwl standard version](https://www.commonwl.org/v1.2/).
-- We have not yet implemented scattering across multiple inputs.
-- |- symbol in cwl tags is not yet supported.
+- MultipleInputFeatureRequirement is not supported for building workflows
+See [section](https://www.commonwl.org/v1.2/Workflow.html#WorkflowStepInput)
 
 
 ### Status
