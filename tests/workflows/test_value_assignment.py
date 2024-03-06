@@ -1,7 +1,6 @@
 """Test value assignment."""
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 from polus.tools.workflows.builders import StepBuilder
@@ -12,7 +11,7 @@ from polus.tools.workflows.types import CWLBasicTypeEnum
 
 
 @pytest.fixture()
-def default_input_model() -> dict[Any, Any]:
+def default_input_model() -> dict:
     """Build a template AssignableWorkflowStepInput."""
     input_ = AssignableWorkflowStepInput(
         id="test_input",
@@ -24,10 +23,15 @@ def default_input_model() -> dict[Any, Any]:
     return input_.model_dump(by_alias=True)
 
 
-def test_assign_int(default_input_model: dict[Any, Any]) -> None:
+def test_assign_int(default_input_model: dict) -> None:
     """Test we can only assign an int."""
     type_dict = {"type": "int"}
-    input_model = {**default_input_model, **type_dict, "optional": True}
+    input_model = {
+        **default_input_model,
+        **type_dict,
+        "optional": True,
+        "step_id": "test_step_id",
+    }
     input_ = AssignableWorkflowStepInput(**input_model)
 
     assert input_.type_ == CWLBasicType(type_=CWLBasicTypeEnum.INT)
@@ -37,10 +41,15 @@ def test_assign_int(default_input_model: dict[Any, Any]) -> None:
     assert not input_.type_.is_value_assignable("ok")
 
 
-def test_assign_string(default_input_model: dict[Any, Any]) -> None:
+def test_assign_string(default_input_model: dict) -> None:
     """Test we can only assign an string."""
     type_dict = {"type": "string"}
-    input_model = {**default_input_model, **type_dict, "optional": True}
+    input_model = {
+        **default_input_model,
+        **type_dict,
+        "optional": True,
+        "step_id": "test_step_id",
+    }
     input_ = AssignableWorkflowStepInput(**input_model)
 
     assert input_.type_.is_value_assignable(
@@ -49,10 +58,15 @@ def test_assign_string(default_input_model: dict[Any, Any]) -> None:
     assert not input_.type_.is_value_assignable(4)
 
 
-def test_assign_array_of_strings(default_input_model: dict[Any, Any]) -> None:
+def test_assign_array_of_strings(default_input_model: dict) -> None:
     """Test we can only assign an array of strings."""
     type_dict = {"type": {"type": "array", "items": "string"}}
-    input_model = {**default_input_model, **type_dict, "optional": True}
+    input_model = {
+        **default_input_model,
+        **type_dict,
+        "optional": True,
+        "step_id": "test_step_id",
+    }
     input_ = AssignableWorkflowStepInput(**input_model)
 
     assert input_.type_.is_value_assignable(["ok"])
@@ -62,10 +76,15 @@ def test_assign_array_of_strings(default_input_model: dict[Any, Any]) -> None:
     )  # cannot mix strings and ints
 
 
-def test_assign_array_of_files(default_input_model: dict[Any, Any]) -> None:
+def test_assign_array_of_files(default_input_model: dict) -> None:
     """Test we can only assign an array of paths."""
     type_dict = {"type": {"type": "array", "items": "File"}}
-    input_model = {**default_input_model, **type_dict, "optional": True}
+    input_model = {
+        **default_input_model,
+        **type_dict,
+        "optional": True,
+        "step_id": "test_step_id",
+    }
     input_ = AssignableWorkflowStepInput(**input_model)
 
     assert input_.type_.is_value_assignable(
@@ -73,12 +92,17 @@ def test_assign_array_of_files(default_input_model: dict[Any, Any]) -> None:
     )
 
 
-def test_assign_nested_array(default_input_model: dict[Any, Any]) -> None:
+def test_assign_nested_array(default_input_model: dict) -> None:
     """Test we can only assign a nested array."""
     type_dict = {
         "type": {"type": "array", "items": {"type": "array", "items": "string"}},
     }
-    input_model = {**default_input_model, **type_dict, "optional": True}
+    input_model = {
+        **default_input_model,
+        **type_dict,
+        "optional": True,
+        "step_id": "test_step_id",
+    }
     input_ = AssignableWorkflowStepInput(**input_model)
 
     assert input_.type_.is_value_assignable([["ok"]])  # nested array of strings ok

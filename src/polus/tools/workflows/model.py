@@ -1,6 +1,5 @@
 """The main cwl models."""
 
-from enum import Enum
 from pathlib import Path
 from typing import Annotated
 from typing import Any
@@ -30,6 +29,7 @@ from polus.tools.workflows.exceptions import IncompatibleValueError
 from polus.tools.workflows.exceptions import InvalidFormatError
 from polus.tools.workflows.exceptions import OutputAssignmentError
 from polus.tools.workflows.exceptions import ScatterValidationError
+from polus.tools.workflows.exceptions import UnexpectedClassError
 from polus.tools.workflows.exceptions import UnexpectedTypeError
 from polus.tools.workflows.exceptions import UnsupportedCwlVersionError
 from polus.tools.workflows.exceptions import UnsupportedProcessClassError
@@ -38,9 +38,10 @@ from polus.tools.workflows.model_extra import CommandLineBinding
 from polus.tools.workflows.model_extra import CommandOutputBinding
 from polus.tools.workflows.model_extra import CwlDocExtra
 from polus.tools.workflows.model_extra import CwlRequireExtra
-from polus.tools.workflows.model_extra import InputBinding
+from polus.tools.workflows.model_extra import LinkMergeMethod
 from polus.tools.workflows.model_extra import LoadListingEnum
 from polus.tools.workflows.model_extra import PickValueMethod
+from polus.tools.workflows.model_extra import ScatterMethodEnum
 from polus.tools.workflows.model_extra import SecondaryFileSchema
 from polus.tools.workflows.types import CWLArray
 from polus.tools.workflows.types import CWLBasicType
@@ -58,6 +59,7 @@ logger = get_logger(__name__)
 
 def is_valid_parameter_id(id_: str) -> str:
     """Check if parameter id is valid."""
+    # No specific guidelines found in the spec.
     return id_
 
 
@@ -80,34 +82,15 @@ class Parameter(CwlDocExtra):
     optional: bool = Field(False, exclude=True)
     format_: Optional[Union[str, list[str], Expression]] = Field(None, alias="format")
 
-    @model_serializer(mode="wrap", when_used="always")
-    def serialize_model(self, nxt: Any) -> SerializedModel:  # noqa ANN401
-        """When serializing, add optional info in the type."""
-        # NOTE here we favor syntactic sugar for simple types.
-        if self.optional:
-            add_trailing_question_mark = False
-            if isinstance(self.type_, CWLBasicType):
-                add_trailing_question_mark = True
-            # NOTE Only valid if we used syntactic sugar for simple arrays.
-            if isinstance(self.type_, CWLArray) and isinstance(
-                self.type_.items,
-                CWLBasicType,
-            ):
-                add_trailing_question_mark = True
-
-        serialized = nxt(self)
-
-        if self.optional:
-            if add_trailing_question_mark:
-                serialized["type"] = str(serialized["type"]) + "?"
-            else:
-                serialized["type"] = ["null", serialized["type"]]
-        return serialized
+    secondary_files: Optional[
+        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
+    ] = Field(None, alias="secondaryFiles")
+    streamable: Optional[bool] = None
 
     @model_validator(mode="before")
     def transform_type(self) -> Self:
         """Check if we have an optional type."""
-        # we allow attribute name or alias
+        # we allow attribute name or alias so fold both cases.
         key = "type_" if self.get("type_") else "type"
 
         if isinstance(self[key], list):
@@ -131,17 +114,45 @@ class Parameter(CwlDocExtra):
             raise InvalidFormatError(msg)
         return self
 
+    @model_serializer(mode="wrap", when_used="always")
+    def serialize_model(self, nxt: Any) -> SerializedModel:  # noqa ANN401
+        """When serializing, add optional info in the type."""
+        # NOTE here we favor syntactic sugar for simple types.
+        # TODO we could make this a user option.
+        if self.optional:
+            add_trailing_question_mark = False
+            if isinstance(self.type_, CWLBasicType):
+                add_trailing_question_mark = True
+            # NOTE Only valid if we used syntactic sugar for simple arrays.
+            if isinstance(self.type_, CWLArray) and isinstance(
+                self.type_.items,
+                CWLBasicType,
+            ):
+                add_trailing_question_mark = True
+
+        serialized = nxt(self)
+
+        if self.optional:
+            if add_trailing_question_mark:
+                serialized["type"] = str(serialized["type"]) + "?"
+            else:
+                serialized["type"] = ["null", serialized["type"]]
+        return serialized
+
 
 class InputParameter(Parameter):
     """Base class of any input parameter."""
 
-    pass
+    model_config = ConfigDict(populate_by_name=True)
+
+    input_binding: Optional[CommandLineBinding] = Field(None, alias="inputBinding")
+    load_contents: Optional[bool] = Field(None, alias="loadContents")
+    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
+    default: Optional[CWLValue] = None
 
 
 class OutputParameter(Parameter):
     """Base class of any input parameter."""
-
-    pass
 
 
 class WorkflowInputParameter(InputParameter):
@@ -150,15 +161,6 @@ class WorkflowInputParameter(InputParameter):
     Workflow input parameters define how what inputs
     to provide to execute a workflow.
     """
-
-    secondary_files: Optional[
-        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
-    ] = Field(None, alias="secondaryFiles")
-    streamable: Optional[bool] = None
-    load_contents: Optional[bool] = Field(None, alias="loadContents")
-    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
-    default: Optional[CWLValue] = None
-    input_binding: Optional[InputBinding] = Field(None, alias="inputBinding")
 
     pass
 
@@ -175,12 +177,8 @@ class WorkflowOutputParameter(OutputParameter):
     """
 
     model_config = ConfigDict(populate_by_name=True)
-    output_source: str = Field(..., alias="outputSource")
 
-    secondary_files: Optional[
-        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
-    ] = Field(None, alias="secondaryFiles")
-    streamable: Optional[bool] = None
+    output_source: str = Field(..., alias="outputSource")
     link_merge: Optional[PickValueMethod] = Field(None, alias="linkMerge")
     pick_value: Optional[PickValueMethod] = Field(None, alias="pickValue")
 
@@ -188,30 +186,13 @@ class WorkflowOutputParameter(OutputParameter):
 class CommandInputParameter(InputParameter):
     """Command Line Tool input parameter."""
 
-    model_config = ConfigDict(populate_by_name=True)
-
-    input_binding: Optional[CommandLineBinding] = Field(None, alias="inputBinding")
-    load_contents: Optional[bool] = Field(None, alias="loadContents")
-    load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
-    default: Optional[CWLValue] = None
-    secondary_files: Optional[
-        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
-    ] = Field(None, alias="secondaryFiles")
-    streamable: Optional[bool] = None
-
 
 class CommandOutputParameter(OutputParameter):
     """Command Line Tool output parameter."""
 
     model_config = ConfigDict(populate_by_name=True)
-    output_binding: Optional[CommandOutputBinding] = Field(
-        None,
-        alias="outputBinding",
-    )
-    secondary_files: Optional[
-        Union[SecondaryFileSchema, list[SecondaryFileSchema]]
-    ] = Field(None, alias="secondaryFiles")
-    streamable: Optional[bool] = None
+
+    output_binding: Optional[CommandOutputBinding] = Field(None, alias="outputBinding")
 
 
 def is_valid_stepio_id(id_: str) -> str:
@@ -226,10 +207,11 @@ class WorkflowStepOutput(BaseModel):
     """WorkflowStepOuput.
 
     WorkflowStepOuput define the name of a step output that can be used
-    as a reference for in another step input or a workflow output.
+    as a reference in another step input or a workflow output.
     """
 
     model_config = ConfigDict(populate_by_name=True)
+
     id_: StepIOId = Field(..., alias="id")
 
 
@@ -242,14 +224,14 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    type_: CWLType = Field(exclude=True, alias="type")
+    type_: CWLType = Field(..., exclude=True, alias="type")
     format_: Optional[Union[str, list[str], Expression]] = Field(
         None,
         exclude=True,
         alias="format",
     )
-    value: Any = None
-    step_id: str
+    value: PythonValue = Field(None, exclude=True)
+    step_id: str = Field(..., exclude=True)
 
 
 class WorkflowStepInput(CwlDocExtra):
@@ -264,7 +246,7 @@ class WorkflowStepInput(CwlDocExtra):
     id_: StepIOId = Field(..., alias="id")
     source: Optional[str]
 
-    link_merge: Optional[PickValueMethod] = Field(None, alias="linkMerge")
+    link_merge: Optional[LinkMergeMethod] = Field(None, alias="linkMerge")
     pick_value: Optional[PickValueMethod] = Field(None, alias="pickValue")
     load_contents: Optional[bool] = Field(None, alias="loadContents")
     load_listing: Optional[LoadListingEnum] = Field(None, alias="loadListing")
@@ -282,14 +264,14 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: CWLType = Field(exclude=True, alias="type")
+    optional: bool = Field(exclude=True)
     format_: Optional[Union[str, list[str], Expression]] = Field(
         None,
         exclude=True,
         alias="format",
     )
-    value: PythonValue = None
-    optional: bool = Field(exclude=True)
-    step_id: str
+    value: PythonValue = Field(None, exclude=True)
+    step_id: str = Field(..., exclude=True)
 
     def set_value(
         self,
@@ -319,7 +301,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
     def __setattr__(
         self,
         name: str,
-        value: Any,  # noqa: ANN401
+        value: Union[PythonValue, AssignableWorkflowStepOutput],
     ) -> None:
         """This is enabling assignment in our python DSL.
 
@@ -357,14 +339,6 @@ WorkflowStepInputs = Annotated[
 
 # represents step outputs
 WorkflowStepOutputs = Annotated[list[WorkflowStepOutput], []]
-
-
-class ScatterMethodEnum(str, Enum):
-    """Options for scatterMethod."""
-
-    dotproduct = "dotproduct"
-    nested_crossproduct = "nested_crossproduct"
-    flat_crossproduct = "flat_crossproduct"
 
 
 class WorkflowStep(CwlDocExtra, CwlRequireExtra):
@@ -454,14 +428,14 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
                     )
                     raise ScatterValidationError(err_msg)
 
-            # check if we need a scatter method
+            # check if we need a scatter method and set to default if required.
             if len(self.scatter) > 1 and not self.scatter_method:
                 self.scatter_method = ScatterMethodEnum.dotproduct
 
     def __setattr__(
         self,
         name: str,
-        value: Any,  # noqa: ANN401
+        value: Union[PythonValue, AssignableWorkflowStepOutput],
     ) -> None:
         """This is enabling assignment in our python DSL."""
         # model properties are accessed normally,
@@ -515,7 +489,7 @@ class WorkflowStep(CwlDocExtra, CwlRequireExtra):
     def serialize_value(
         self,
         input_: AssignableWorkflowStepInput,
-    ) -> Union[dict, list, PythonValue]:
+    ) -> CWLValue:
         """Serialize input values."""
         return input_.type_.serialize_value(input_.value)
 
@@ -703,8 +677,8 @@ class Workflow(Process):
     def validate_class(cls, class_: str) -> str:
         """Check we are parsing a workflow."""
         if class_ and class_ != "Workflow":
-            msg = "bad class"
-            raise Exception(msg, class_)
+            msg = "Workflow"
+            raise UnexpectedClassError(msg, class_)
         return class_
 
     def save_config(self, path: Path = Path()) -> Path:
@@ -720,11 +694,12 @@ class CommandLineTool(Process):
 
     inputs: list[CommandInputParameter]
     outputs: list[CommandOutputParameter]
+    class_: str = Field(alias="class", default="CommandLineTool")
+
     base_command: Optional[str] = Field(None, alias="baseCommand")
     stdin: Optional[str] = None
     stderr: Optional[str] = None
     stdout: Optional[str] = None
-    class_: str = Field(alias="class", default="CommandLineTool")
     arguments: Optional[Union[str, Expression, CommandLineBinding]] = Field(None)
     success_codes: Optional[list[int]] = Field(None, alias="successCodes")
     temporary_fail_codes: Optional[list[int]] = Field(None, alias="temporaryFailCodes")
@@ -735,8 +710,8 @@ class CommandLineTool(Process):
     def validate_class(cls, class_: str) -> str:
         """Check we are parsing a command line tool."""
         if class_ and class_ != "CommandLineTool":
-            msg = "bad class"
-            raise Exception(msg, class_)
+            msg = "CommandLineTool"
+            raise UnexpectedClassError(msg, class_)
         return class_
 
 

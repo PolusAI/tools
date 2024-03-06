@@ -96,7 +96,7 @@ class StepBuilder:
 
         # Generate additional inputs.
         # For example,if the conditional clause contains unknown inputs.
-        # It could also be used to generate fake inputs for wic compatibility.
+        # NOTE It could also be used to generate fake inputs for wic compatibility.
         if parsed_add_inputs:
             inputs = inputs + [
                 AssignableWorkflowStepInput(
@@ -181,8 +181,10 @@ class StepBuilder:
         """
         if when:
             if not when_input_names:
-                msg = "You need to specify which inputs\
-                    are referenced in the when clause."
+                msg = (
+                    "You need to specify which inputs"
+                    "are referenced in the when clause."
+                )
                 raise WhenClauseValidationError(msg)
 
             _add_inputs_ids = (
@@ -194,8 +196,10 @@ class StepBuilder:
                     when_input_name not in _process_inputs_ids
                     and when_input_name not in _add_inputs_ids
                 ):
-                    msg = "Input in when clause unknown.\
-                            Please add its declaration to add_inputs arguments."
+                    msg = (
+                        "Input in when clause unknown."
+                        "Please add its declaration to add_inputs arguments."
+                    )
                     raise WhenClauseValidationError(msg)
 
 

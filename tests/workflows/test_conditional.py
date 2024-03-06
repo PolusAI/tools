@@ -183,8 +183,7 @@ def test_run_negative(conditional_workflow: Workflow) -> None:
     Here the touch step is not executed as the condition is false.
     The file is not created.
     """
-    # TODO add convenience method to grab the file from the model?
-    wf_cwl_file = Path(urlparse(conditional_workflow.id_).path)
+    wf_cwl_file = conditional_workflow.save(OUTPUT_DIR)
     filename = "message_file_never_created"
     input_names = [input.id_ for input in conditional_workflow.inputs]
     input_values = [f"--{input_names[0]}={filename}"]

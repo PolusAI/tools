@@ -13,6 +13,14 @@ from polus.tools.workflows.requirements import ProcessRequirement
 from polus.tools.workflows.types import Expression
 
 
+class ScatterMethodEnum(str, Enum):
+    """Options for scatterMethod."""
+
+    dotproduct = "dotproduct"
+    nested_crossproduct = "nested_crossproduct"
+    flat_crossproduct = "flat_crossproduct"
+
+
 class LoadListingEnum(str, Enum):
     """Desired behavior for loading listing."""
 
@@ -108,6 +116,8 @@ class CommandLineBinding(InputBinding):
     Describe how to translate the input parameter to a
     program argument.
     """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     load_contents: Optional[bool] = Field(None, alias="loadContents")
     position: Optional[int] = None

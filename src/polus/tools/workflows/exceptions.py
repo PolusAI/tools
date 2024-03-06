@@ -74,6 +74,14 @@ class UnsupportedProcessClassError(Exception):
         super().__init__(f"unsupported cwl process class : {class_}")
 
 
+class UnexpectedClassError(Exception):
+    """Raised if we try to load a class with the wrong loader."""
+
+    def __init__(self, expected_class: str, provided_class: str) -> None:
+        """Init UnexpectedClassError."""
+        super().__init__(f"expected: {expected_class}, got: {provided_class}")
+
+
 class UnsupportedCwlVersionError(Exception):
     """Raised if the cwl version is not supported."""
 
