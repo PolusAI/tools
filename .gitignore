@@ -161,6 +161,7 @@ cython_debug/
 
 .ruff_cache
 .vscode
+.vscode/launch.json
 
 poetry.lock
 
@@ -168,3 +169,5 @@ poetry.lock
 /tmp
 
 /examples/workflows/debug_*.py
+
+.DS_Store

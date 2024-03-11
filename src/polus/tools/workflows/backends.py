@@ -33,8 +33,7 @@ def run_cwl(
     cmd = ["cwltool"]
 
     if cwd is None:
-        cwd = Path()  # by default we run cwltool in the current directory.
-    cwd = cwd.resolve()
+        cwd = Path.cwd()
 
     file_exists(process_file)
 

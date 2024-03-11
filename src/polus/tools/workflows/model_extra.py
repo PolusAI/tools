@@ -14,7 +14,10 @@ from polus.tools.workflows.types import Expression
 
 
 class ScatterMethodEnum(str, Enum):
-    """Options for scatterMethod."""
+    """Options for scatterMethod.
+
+    https://www.commonwl.org/v1.2/Workflow.html#Scatter/gather
+    """
 
     dotproduct = "dotproduct"
     nested_crossproduct = "nested_crossproduct"
@@ -22,7 +25,10 @@ class ScatterMethodEnum(str, Enum):
 
 
 class LoadListingEnum(str, Enum):
-    """Desired behavior for loading listing."""
+    """Desired behavior for loading listing.
+
+    https://www.commonwl.org/v1.2/Workflow.html#LoadListingEnum
+    """
 
     no_listing = "no_listing"
     shallow_listing = "shallow_listing"
@@ -30,14 +36,20 @@ class LoadListingEnum(str, Enum):
 
 
 class LinkMergeMethod(str, Enum):
-    """Input link merge method."""
+    """Input link merge method.
+
+    https://www.commonwl.org/v1.2/Workflow.html#Merging_multiple_inbound_data_links
+    """
 
     merge_nested = "merge_nested"
     merge_flattened = "merge_flattened"
 
 
 class PickValueMethod(str, Enum):
-    """Picking non-null values among inbound data links."""
+    """Picking non-null values among inbound data links.
+
+    https://www.commonwl.org/v1.2/Workflow.html#Picking_non-null_values_among_inbound_data_links
+    """
 
     first_non_null = "first_non_null"
     the_only_non_null = "the_only_non_null"

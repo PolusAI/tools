@@ -3,12 +3,9 @@
 from pathlib import Path
 from typing import Callable
 from typing import Optional
-from typing import TypedDict
 from typing import Union
 
 from pydantic import ValidationError
-from typing_extensions import NotRequired
-from typing_extensions import Unpack
 
 from polus.tools.workflows.default_ids import generate_cwl_source_repr
 from polus.tools.workflows.default_ids import generate_default_input_path
@@ -234,33 +231,29 @@ class WorkflowBuilder:
     Enable creating workflow dynamically.
     """
 
-    class Options(TypedDict):
-        """WorkflowBuilder options.
-
-        workdir: where to save the generated cwl specification file.
-        recursive: set to true if process references be recursively loaded.
-        context: optional dictionary in which all process refs are recorded.
-        add_step_index: set to true if step should be preprended by their position
-        in the original list (necessary is step are repeated).
-        # NOTE this could be auto-detected instead.
-        """
-
-        workdir: NotRequired[Path]
-        recursive: NotRequired[bool]
-        context: NotRequired[dict]
-        add_step_index: NotRequired[bool]
-
     def __init__(
         self,
-        **kwds: Unpack[Options],
+        context: Optional[dict] = None,
+        workdir: Path = Path(),
+        recursive: bool = True,
+        add_step_index: bool = True,
     ) -> None:
-        """Set up the workflow factory options."""
+        """Set up the workflow factory options.
+
+        Args:
+            workdir: where to save the generated cwl specification file.
+            recursive: set to true if process references be recursively loaded.
+            context: optional dictionary in which all process refs are recorded.
+            add_step_index: set to true if step should be preprended by their position
+            in the original list (necessary if step are repeated).
+            # NOTE this could be auto-detected instead.
+        """
         self.context = {}
         self.recursive = True
-        self.workdir = kwds.get("workdir", Path())
-        self.recursive = kwds.get("recursive", True)
-        self.context = kwds.get("context", {})
-        self.add_step_index = kwds.get("add_step_index", True)
+        self.workdir = workdir
+        self.recursive = recursive
+        self.context = {} if context is None else context
+        self.add_step_index = add_step_index
 
     def __call__(  # noqa: PLR0912,C901
         self,

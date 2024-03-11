@@ -14,14 +14,13 @@ def test_load_clt(test_data_dir: Path, filename: str) -> None:
     CommandLineTool.load(cwl_file)
 
 
+@pytest.mark.skip(reason="we decided to log a warning instead.")
 @pytest.mark.parametrize("filename", ["echo_string_v10.cwl"])
 def test_load_clt_old_version(test_data_dir: Path, filename: str) -> None:
     """Test Command Line Tool factory method."""
-    # NOTE we decided to log a warning instead.
-    pass
-    # with pytest.raises(UnsupportedCwlVersionError):
-    #     cwl_file = test_data_dir / filename
-    #     CommandLineTool.load(cwl_file)
+    with pytest.raises(UnsupportedCwlVersionError):
+        cwl_file = test_data_dir / filename
+        CommandLineTool.load(cwl_file)
 
 
 @pytest.mark.parametrize(

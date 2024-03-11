@@ -9,6 +9,8 @@ It requires no configuration and focus on ease of use and modularity.
 
 ### How to install
 
+the workflow builder is written and tested for Python 3.x {x = 9, 10, 11}.
+
 Use you prefered method to create a new environment then :
 
 with pip: `pip install .`
