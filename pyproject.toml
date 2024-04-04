@@ -1,0 +1,41 @@
+[tool.poetry]
+authors = ["Antoine Gerardin <antoine.gerardin@nih.gov>", "Camilo Velez <camilo.velez@axleinfo.com>", "Nicholas Schaub <nick.schaub@nih.gov>"]
+description = "General purpose tools for building computational workflows."
+license = "License :: OSI Approved :: MIT License"
+maintainers = ["Antoine Gerardin <antoine.gerardin@nih.gov>", "Camilo Velez <camilo.velez@axleinfo.com>"]
+name = "polus-tools"
+packages = [{include = "polus", from = "src"}]
+readme = "README.md"
+repository = "https://github.com/agerardin/polus-tools"
+version = "0.1.0-dev0"
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.12"
+pydantic = "^2.6.2"
+cwl-utils = "^0.32"
+pyyaml = "^6.0.1"
+rich = "^13.7.0"
+cwltool = "^3.1.20240112164112"
+
+[tool.poetry.group.dev.dependencies]
+bump2version = "^1.0.1"
+pre-commit = "^3.6.2"
+ruff = "^0.2.2"
+black = "^24.2.0"
+pytest = "^8.0.2"
+types-pyyaml = "^6.0.12.12"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+enable_incomplete_feature = ["Unpack"]
+
+[tool.pytest.ini_options]
+addopts = [
+  "--import-mode=importlib",
+]
