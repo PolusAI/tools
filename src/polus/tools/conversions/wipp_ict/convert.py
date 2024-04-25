@@ -1,8 +1,8 @@
 """Convert WIPP Plugin to ICT."""
-from polus.tools.conversions.wipp_to_ict.metadata import convert_wipp_metadata_to_ict
-from polus.tools.conversions.wipp_to_ict.hardware import convert_wipp_hardware_to_ict
-from polus.tools.conversions.wipp_to_ict.io import convert_wipp_io_to_ict
-from polus.tools.conversions.wipp_to_ict.ui import convert_wipp_ui_to_ict
+from polus.tools.conversions.wipp_ict.metadata import convert_wipp_metadata_to_ict
+from polus.tools.conversions.wipp_ict.hardware import convert_wipp_hardware_to_ict
+from polus.tools.conversions.wipp_ict.io import convert_wipp_io_to_ict
+from polus.tools.conversions.wipp_ict.ui import convert_wipp_ui_to_ict
 from pathlib import Path
 from polus.tools.plugins import Plugin
 from polus.tools.plugins._plugins.classes import _load_plugin
