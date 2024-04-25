@@ -248,7 +248,7 @@ class BasePlugin:
     @property
     def clt(self) -> dict:
         """Convenience property of Plugin as CommandLineTool with no network access."""
-        return self._to_cwl(network_access=False)
+        return self._to_cwl(False)
 
     def save_cwl(self, path: StrPath, network_access: bool = False) -> Path:
         """Save plugin as CWL CommandLineTool."""
@@ -256,12 +256,12 @@ class BasePlugin:
             msg = "path must end in .cwl"
             raise ValueError(msg)
         with Path(path).open("w", encoding="utf-8") as file:
-            yaml.dump(self._to_cwl(network_access=network_access), file)
+            yaml.dump(self._to_cwl(network_access), file)
         return Path(path)
 
     def save_clt(self, path: StrPath, network_access: bool = False) -> Path:
         """Save plugin as CWL CommandLineTool."""
-        return self.save_cwl(path, network_access=network_access)
+        return self.save_cwl(path, network_access)
 
     @property
     def _cwl_io(self) -> dict:
