@@ -79,13 +79,15 @@ class BasePlugin:
         inp_dirs = [x for x in self.inputs if isinstance(x.value, Path)]
         out_dirs = [x for x in self.outputs if isinstance(x.value, Path)]
 
-        inp_dirs_dict = {x: f"/data/inputs/input{n}" for (n, x) in enumerate(inp_dirs)}
+        inp_dirs_dict = {
+            x: f"/data/inputs/input{n}" for (n, x) in enumerate(inp_dirs)}
         out_dirs_dict = {
             x: f"/data/outputs/output{n}" for (n, x) in enumerate(out_dirs)
         }
 
         mnts_in = [
-            [f"type=bind,source={k},target={v},readonly"]  # must be a list of lists
+            # must be a list of lists
+            [f"type=bind,source={k},target={v},readonly"]
             for (k, v) in inp_dirs_dict.items()
         ]
         mnts_out = [
@@ -171,7 +173,8 @@ class BasePlugin:
     @property
     def manifest(self) -> dict:
         """Plugin manifest."""
-        manifest_ = json.loads(self.json(exclude={"_io_keys", "versions", "id"}))
+        manifest_ = json.loads(
+            self.json(exclude={"_io_keys", "versions", "id"}))
         manifest_["version"] = manifest_["version"]["version"]
         return manifest_
 
@@ -215,8 +218,18 @@ class BasePlugin:
 
         super().__setattr__(name, value)
 
-    def _to_cwl(self) -> dict:
-        """Return CWL yml as dict."""
+    def _to_cwl(self, network_access: bool) -> dict:
+        """Convert Plugin to CWL CommandLineTool.
+
+
+        Args:
+            network_access: bool
+                Default is `False`. If set to `True`, the
+                requirements of the CLT will include
+                `networkAccess`: `True`.
+
+        Returns: `dict` representation of the CLT.
+        """
         cwl_dict = CWL_BASE_DICT
         cwl_dict["inputs"] = {}
         cwl_dict["outputs"] = {}
@@ -228,16 +241,27 @@ class BasePlugin:
         for out in outputs:
             cwl_dict["outputs"].update(out)
         cwl_dict["requirements"]["DockerRequirement"]["dockerPull"] = self.containerId
+        if network_access:
+            cwl_dict["requirements"]["NetworkAccess"] = {"networkAccess": True}
         return cwl_dict
 
-    def save_cwl(self, path: StrPath) -> Path:
-        """Save plugin as CWL command line tool."""
+    @property
+    def clt(self) -> dict:
+        """Convenience property of Plugin as CommandLineTool with no network access."""
+        return self._to_cwl(network_access=False)
+
+    def save_cwl(self, path: StrPath, network_access: bool = False) -> Path:
+        """Save plugin as CWL CommandLineTool."""
         if str(path).rsplit(".", maxsplit=1)[-1] != "cwl":
             msg = "path must end in .cwl"
             raise ValueError(msg)
         with Path(path).open("w", encoding="utf-8") as file:
-            yaml.dump(self._to_cwl(), file)
+            yaml.dump(self._to_cwl(network_access=network_access), file)
         return Path(path)
+
+    def save_clt(self, path: StrPath, network_access: bool = False) -> Path:
+        """Save plugin as CWL CommandLineTool."""
+        return self.save_cwl(path, network_access=network_access)
 
     @property
     def _cwl_io(self) -> dict:
@@ -298,7 +322,8 @@ class BasePlugin:
         r_c = RuntimeContext({"outdir": str(outdir_path)})
         fac = Factory(runtime_context=r_c)
         cwl = fac.make(str(_cwl))
-        return cwl(**self._cwl_io)  # object's io dict is used instead of .yml file
+        # object's io dict is used instead of .yml file
+        return cwl(**self._cwl_io)
 
     def __lt__(self, other: "BasePlugin") -> bool:
         return self.version < other.version
