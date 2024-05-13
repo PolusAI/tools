@@ -171,3 +171,9 @@ poetry.lock
 /examples/workflows/debug_*.py
 
 .DS_Store
+
+# local manifests
+src/polus/tools/plugins/_plugins/manifests/*
+
+# allow python scripts inside manifests dir
+!src/polus/tools/plugins/_plugins/manifests/*.py
