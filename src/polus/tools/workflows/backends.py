@@ -13,12 +13,13 @@ from polus.tools.workflows.utils import file_exists
 logger = get_logger(__name__)
 
 
-def run_cwl(
+def run_cwl(  # noqa: PLR0913
     process_file: Path,
     config_file: Optional[Path] = None,
     extra_args: Optional[list[str]] = None,
     cwd: Optional[Path] = None,
     copy_cwl: bool = True,
+    cwltool_flags: Optional[list[str]] = None,
 ) -> subprocess.CompletedProcess:
     """Run cwltool with a config file or provided parameters.
 
@@ -29,8 +30,12 @@ def run_cwl(
         cwd:            (optional) the directory from which to run the tool.
         copy_cwl:       (optional) whether to copy the original cwl in
                         cwd and use the copy.
+        cwltool_flags:  (optional) extra cwltool flags.
     """
     cmd = ["cwltool"]
+
+    if cwltool_flags:
+        cmd += cwltool_flags
 
     if cwd is None:
         cwd = Path.cwd()

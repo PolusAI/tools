@@ -1,0 +1,8 @@
+wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___filePattern: '{index:d+}.tif'
+wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___inpDir:
+  class: Directory
+  location: /Users/antoinegerardin/Documents/data/rt-cetsa/20210318 LDHA compound
+    plates/20210318 LDHA compound plate 1 6K cells
+wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___outDir:
+  class: Directory
+  location: out

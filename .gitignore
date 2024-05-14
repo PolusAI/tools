@@ -169,6 +169,7 @@ poetry.lock
 /tmp
 
 /examples/workflows/debug_*.py
+tests/workflows/test_data/schemas
 
 .DS_Store
 
