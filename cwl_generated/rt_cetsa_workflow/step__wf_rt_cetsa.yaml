@@ -7,19 +7,15 @@ wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___outDir:
   class: Directory
   location: 0__step__rt_cetsa_plate_extraction__outDir
 wf_rt_cetsa___1__step__rt_cetsa_intensity_extraction___filePattern: '{index:d+}.ome.tif'
-wf_rt_cetsa___1__step__rt_cetsa_intensity_extraction___mask: 1.ome.tif
 wf_rt_cetsa___1__step__rt_cetsa_intensity_extraction___outDir:
   class: Directory
   location: 1__step__rt_cetsa_intensity_extraction__outDir
-wf_rt_cetsa___2__step__rt_cetsa_moltenprot___filePattern: .*
 wf_rt_cetsa___2__step__rt_cetsa_moltenprot___outDir:
   class: Directory
   location: 2__step__rt_cetsa_moltenprot__outDir
 wf_rt_cetsa___3__step__rt_cetsa_analysis___outDir:
   class: Directory
   location: out_analysis
-wf_rt_cetsa___3__step__rt_cetsa_analysis___params: plate_(1-58)_moltenprot_params.csv
 wf_rt_cetsa___3__step__rt_cetsa_analysis___platemap:
   class: File
   location: /Users/antoinegerardin/RT-CETSA-Analysis/data/platemap.xlsx
-wf_rt_cetsa___3__step__rt_cetsa_analysis___values: plate_(1-58)_moltenprot_curves.csv

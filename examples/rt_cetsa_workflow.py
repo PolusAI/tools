@@ -24,10 +24,10 @@ PLATEMAP_FILE = Path("/Users/antoinegerardin/RT-CETSA-Analysis/data/platemap.xls
 
 if __name__ == "__main__":
     # collect clts
-    plate_extraction_cwl = "/Users/antoinegerardin/Documents/projects/polus-plugins/segmentation/rt-cetsa-plate-extraction-tool/rt_cetsa_plate_extraction.cwl"  # noqa: E501
-    intensity_extraction_cwl = "/Users/antoinegerardin/Documents/projects/polus-plugins/features/rt-cetsa-intensity-extraction-tool/rt_cetsa_intensity_extraction.cwl"  # noqa: E501
-    moltenprot_cwl = "/Users/antoinegerardin/Documents/projects/tabular-tools/regression/rt-cetsa-moltenprot-tool/rt_cetsa_moltenprot.cwl"  # noqa: E501
-    analysis_cwl = "/Users/antoinegerardin/Documents/projects/tabular-tools/regression/rt-cetsa-analysis-tool/rt_cetsa_analysis.cwl"  # noqa: E501
+    plate_extraction_cwl = "https://raw.githubusercontent.com/agerardin/image-tools/bf32f5c342ab32108e35eff8cb794b2f1f1e65e8/segmentation/rt-cetsa-plate-extraction-tool/rt_cetsa_plate_extraction.cwl"  # noqa: E501
+    intensity_extraction_cwl = "https://raw.githubusercontent.com/agerardin/image-tools/bf32f5c342ab32108e35eff8cb794b2f1f1e65e8/features/rt-cetsa-intensity-extraction-tool/rt_cetsa_intensity_extraction.cwl"  # noqa: E501
+    moltenprot_cwl = "https://raw.githubusercontent.com/agerardin/tabular-tools/feat/rt_cetsa_tools/regression/rt-cetsa-moltenprot-tool/rt_cetsa_moltenprot.cwl"  # noqa: E501
+    analysis_cwl = "https://raw.githubusercontent.com/agerardin/tabular-tools/feat/rt_cetsa_tools/regression/rt-cetsa-analysis-tool/rt_cetsa_analysis.cwl"  # noqa: E501
 
     clt_files = [
         plate_extraction_cwl,
@@ -47,20 +47,12 @@ if __name__ == "__main__":
 
     # Intensity Extract
     intensity_extraction.inpDir = plate_extraction.outDir
-    intensity_extraction.mask = "1.ome.tif"
     intensity_extraction.filePattern = "{index:d+}.ome.tif"
 
     # Moltenprot
     moltenprot.inpDir = intensity_extraction.outDir
-    moltenprot.inpDir = Path(
-        "/Users/antoinegerardin/Documents/projects/polus-tools/tmp/rt_cetsa_workflow/1__step__rt_cetsa_intensity_extraction__outDir",
-    )
-    moltenprot.filePattern = ".*"
-
     analysis.inpDir = moltenprot.outDir
     analysis.platemap = PLATEMAP_FILE
-    analysis.params = "plate_(1-58)_moltenprot_params.csv"
-    analysis.values = "plate_(1-58)_moltenprot_curves.csv"
     analysis.outDir = WORKFLOW_OUTPUT_DIR
 
     workflow = WorkflowBuilder(workdir=OUTPUT_DIR)("wf_rt_cetsa", steps=steps)
