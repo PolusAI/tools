@@ -1,8 +1,10 @@
 # ruff: noqa
 """Script to convert all WIPP manifests to CLT.
 
-This script will first convert all WIPP manifests to ICT and then to CLT.
-WIPP -> ICT -> CLT.
+Example:
+```bash
+python wipp_to_clt.py --repo /path/to/repo --all
+```
 """
 
 # pylint: disable=W0718, W1203
@@ -10,20 +12,19 @@ import logging
 from pathlib import Path
 
 import typer
-from ict import ICT
 from tqdm import tqdm
 
-app = typer.Typer(help="Convert WIPP manifests to ICT.")
-ict_logger = logging.getLogger("ict")
+from polus.tools.conversions import wipp_to_clt
+from polus.tools.plugins._plugins.classes import _load_plugin
+from polus.tools.plugins._plugins.utils import name_cleaner
+
+app = typer.Typer(help="Convert WIPP manifests to CLT.")
 fhandler = logging.FileHandler("wipp_to_clt_conversion.log")
 fformat = logging.Formatter(
     "%(asctime)s - %(levelname)s - %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"
 )
 fhandler.setFormatter(fformat)
 fhandler.setLevel("INFO")
-ict_logger.setLevel("INFO")
-ict_logger.addHandler(fhandler)
-ict_logger.setLevel(logging.INFO)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -54,7 +55,7 @@ def main(
         help="Name of the plugin to convert.",
     ),
 ) -> None:
-    """Convert WIPP manifests to ICT."""
+    """Convert WIPP manifests to CLT."""
     local_manifests = list(repo.rglob("*plugin.json"))
     logger.info(f"Found {len(local_manifests)} manifests in {repo}")
     ignore_list = ["cookiecutter", ".env", "Shared-Memory-OpenMP"]
@@ -78,12 +79,8 @@ def main(
         n = len(local_manifests)
         for manifest in tqdm(local_manifests):
             try:
-                ict_ = ICT.from_wipp(manifest)
-                ict_name = (
-                    ict_.name.split("/")[-1].lower() + ".cwl"  # pylint: disable=E1101
-                )
-                ict_.save_clt(manifest.with_name(ict_name))
-
+                name_ = name_cleaner(_load_plugin(manifest).name)
+                wipp_to_clt(manifest, manifest.with_name(f"{name_}.cwl"))
                 converted += 1
 
             except BaseException as e:
@@ -92,11 +89,8 @@ def main(
         n = 1
         for manifest in [x for x in local_manifests if name in str(x)]:
             try:
-                ict_ = ICT.from_wipp(manifest)
-                ict_name = (
-                    ict_.name.split("/")[-1].lower() + ".cwl"  # pylint: disable=E1101
-                )
-                ict_.save_clt(manifest.with_name(ict_name))
+                name_ = name_cleaner(_load_plugin(manifest).name)
+                wipp_to_clt(manifest, manifest.with_name(f"{name_}.cwl"))
                 converted += 1
 
             except BaseException as e:
