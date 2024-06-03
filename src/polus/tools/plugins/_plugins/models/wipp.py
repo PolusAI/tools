@@ -10,7 +10,7 @@ from typing import Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 from polus.tools.plugins._plugins.io import Input, Output, Version
-from polus.tools.plugins._plugins.models.pydanticv2.WIPPPluginSchema import (
+from polus.tools.plugins._plugins.models.WIPPPluginSchema import (
     ResourceRequirements,
     WippPluginManifest,
 )

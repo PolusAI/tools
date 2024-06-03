@@ -79,8 +79,7 @@ class BasePlugin:
         inp_dirs = [x for x in self.inputs if isinstance(x.value, Path)]
         out_dirs = [x for x in self.outputs if isinstance(x.value, Path)]
 
-        inp_dirs_dict = {
-            x: f"/data/inputs/input{n}" for (n, x) in enumerate(inp_dirs)}
+        inp_dirs_dict = {x: f"/data/inputs/input{n}" for (n, x) in enumerate(inp_dirs)}
         out_dirs_dict = {
             x: f"/data/outputs/output{n}" for (n, x) in enumerate(out_dirs)
         }
@@ -174,8 +173,9 @@ class BasePlugin:
     def manifest(self) -> dict:
         """Plugin manifest."""
         manifest_ = json.loads(
-            self.json(exclude={"_io_keys", "versions", "id"}))
-        manifest_["version"] = manifest_["version"]["version"]
+            self.model_dump_json(exclude={"_io_keys", "versions", "id"})
+        )
+        manifest_["version"] = manifest_["version"]["_root"]
         return manifest_
 
     def __getattribute__(self, name: str) -> Any:  # noqa

@@ -1,6 +1,6 @@
 # type: ignore
 # ruff: noqa: S101, A003
-# pylint: disable=no-self-argument, C0412
+# pylint: disable=no-self-argument, C0412, R0911
 """Plugins I/O utilities."""
 import enum
 import logging
@@ -11,19 +11,10 @@ from itertools import zip_longest
 from typing import Any, Optional, TypeVar, Union
 
 import fsspec
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, StringConstraints
 from pydantic.dataclasses import dataclass
+from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated
-
-from polus.tools.plugins._plugins._compat import PYDANTIC_V2
-
-if PYDANTIC_V2:
-    from typing import Annotated
-
-    from pydantic import RootModel, StringConstraints, field_validator, model_validator
-    from pydantic.functional_validators import AfterValidator
-else:
-    from pydantic import constr, validator
 
 logger = logging.getLogger("polus.plugins")
 
@@ -191,68 +182,38 @@ class IOBase(BaseModel):  # pylint: disable=R0903
 class Output(IOBase):  # pylint: disable=R0903
     """Required until JSON schema is fixed."""
 
-    if PYDANTIC_V2:
-        name: Annotated[
-            str,
-            StringConstraints(pattern=r"^[a-zA-Z0-9][-a-zA-Z0-9]*$"),
-        ] = Field(
-            ...,
-            examples=["outputCollection"],
-            title="Output name",
-        )
-        description: Annotated[str, StringConstraints(pattern=r"^(.*)$")] = Field(
-            ...,
-            examples=["Output collection"],
-            title="Output description",
-        )
-    else:
-        name: constr(regex=r"^[a-zA-Z0-9][-a-zA-Z0-9]*$") = Field(
-            ...,
-            examples=["outputCollection"],
-            title="Output name",
-        )
-        description: constr(regex=r"^(.*)$") = Field(
-            ...,
-            examples=["Output collection"],
-            title="Output description",
-        )
-    type: OutputTypes = Field(
+    name: Annotated[
+        str,
+        StringConstraints(pattern=r"^[a-zA-Z0-9][-a-zA-Z0-9]*$"),
+    ] = Field(
         ...,
-        examples=["stitchingVector", "collection"],
-        title="Output type",
+        examples=["outputCollection"],
+        title="Output name",
+    )
+    description: Annotated[str, StringConstraints(pattern=r"^(.*)$")] = Field(
+        ...,
+        examples=["Output collection"],
+        title="Output description",
     )
 
 
 class Input(IOBase):  # pylint: disable=R0903
     """Required until JSON schema is fixed."""
 
-    if PYDANTIC_V2:
-        name: Annotated[
-            str,
-            StringConstraints(pattern=r"^[a-zA-Z0-9][-a-zA-Z0-9]*$"),
-        ] = Field(
-            ...,
-            description="Input name as expected by the plugin CLI",
-            examples=["inputImages", "fileNamePattern", "thresholdValue"],
-            title="Input name",
-        )
-        description: Annotated[str, StringConstraints(pattern=r"^(.*)$")] = Field(
-            ...,
-            examples=["Input Images"],
-            title="Input description",
-        )
-    else:
-        name: constr(regex=r"^[a-zA-Z0-9][-a-zA-Z0-9]*$") = Field(
-            ...,
-            description="Input name as expected by the plugin CLI",
-            examples=["inputImages", "fileNamePattern", "thresholdValue"],
-            title="Input name",
-        )
-        description: constr(regex=r"^(.*)$") = Field(
-            ...,
-            examples=["Input Images"],
-            title="Input description",
-        )
+    name: Annotated[
+        str,
+        StringConstraints(pattern=r"^[a-zA-Z0-9][-a-zA-Z0-9]*$"),
+    ] = Field(
+        ...,
+        description="Input name as expected by the plugin CLI",
+        examples=["inputImages", "fileNamePattern", "thresholdValue"],
+        title="Input name",
+    )
+    description: Annotated[str, StringConstraints(pattern=r"^(.*)$")] = Field(
+        ...,
+        examples=["Input Images"],
+        title="Input description",
+    )
     type: InputTypes
     required: Optional[bool] = Field(
         True,
@@ -282,174 +243,87 @@ SEMVER_REGEX = re.compile(
     "[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
 )
 
-if PYDANTIC_V2:
 
-    def semver_validator(ver: str) -> str:
-        """Validate a version against semver regex.
+def semver_validator(ver: str) -> str:
+    """Validate a version against semver regex.
 
-        This validator is used by Pydantic in the `Version` object.
-        """
-        re_match = SEMVER_REGEX.match(ver)
-        if not re_match:
-            raise ValueError(
-                f"invalid version ({ver}). Version must follow semantic versioning (see semver.org)"
-            )
-        return ver
+    This validator is used by Pydantic in the `Version` object.
+    """
+    re_match = SEMVER_REGEX.match(ver)
+    if not re_match:
+        raise ValueError(
+            f"invalid version ({ver}). Version must follow semantic versioning (see semver.org)"
+        )
+    return ver
 
-    SemVerRoot = Annotated[str, AfterValidator(semver_validator)]
 
-    @dataclass
-    class Version:
-        """SemVer object."""
+SemVerRoot = Annotated[str, AfterValidator(semver_validator)]
 
-        _root: SemVerRoot
-        major: int = Field(..., init=False)
-        minor: int = Field(..., init=False)
-        patch: int = Field(..., init=False)
-        prerelease: str = Field(..., init=False)
-        buildmetadata: str = Field(..., init=False)
 
-        def __post_init__(self) -> None:
-            re_match = SEMVER_REGEX.match(self._root)
-            match_dict = re_match.groupdict()
-            self.major = int(match_dict["major"])
-            self.minor = int(match_dict["minor"])
-            self.patch = int(match_dict["patch"])
-            self.prerelease = match_dict["prerelease"]
-            self.buildmetadata = match_dict["buildmetadata"]
+@dataclass
+class Version:
+    """SemVer object."""
 
-        def __str__(self) -> str:
-            """Return string representation of Version object."""
-            return self._root
+    _root: SemVerRoot
+    major: int = Field(..., init=False)
+    minor: int = Field(..., init=False)
+    patch: int = Field(..., init=False)
+    prerelease: str = Field(..., init=False)
+    buildmetadata: str = Field(..., init=False)
 
-        @singledispatchmethod
-        def __lt__(self, other: Any) -> bool:
-            """Compare if Version is less than other object."""
-            msg = "invalid type for comparison."
-            raise TypeError(msg)
+    def __post_init__(self) -> None:
+        re_match = SEMVER_REGEX.match(self._root)
+        match_dict = re_match.groupdict()
+        self.major = int(match_dict["major"])
+        self.minor = int(match_dict["minor"])
+        self.patch = int(match_dict["patch"])
+        self.prerelease = match_dict["prerelease"]
+        self.buildmetadata = match_dict["buildmetadata"]
 
-        @singledispatchmethod
-        def __gt__(self, other: Any) -> bool:
-            """Compare if Version is less than other object."""
-            msg = "invalid type for comparison."
-            raise TypeError(msg)
+    def __str__(self) -> str:
+        """Return string representation of Version object."""
+        return self._root
 
-        @singledispatchmethod
-        def __eq__(self, other: Any) -> bool:
-            """Compare if two Version objects are equal."""
-            msg = "invalid type for comparison."
-            raise TypeError(msg)
+    @singledispatchmethod
+    def __lt__(self, other: Any) -> bool:
+        """Compare if Version is less than other object."""
+        msg = "invalid type for comparison."
+        raise TypeError(msg)
 
-        def __hash__(self) -> int:
-            """Needed to use Version objects as dict keys."""
-            return hash(self._root)
+    @singledispatchmethod
+    def __gt__(self, other: Any) -> bool:
+        """Compare if Version is less than other object."""
+        msg = "invalid type for comparison."
+        raise TypeError(msg)
 
-        def __repr__(self) -> str:
-            """Return string representation of Version object."""
-            return self._root
+    @singledispatchmethod
+    def __eq__(self, other: Any) -> bool:
+        """Compare if two Version objects are equal."""
+        msg = "invalid type for comparison."
+        raise TypeError(msg)
 
-    @Version.__eq__.register(str)  # pylint: disable=no-member
-    def _(self, other):
-        return self == Version(other)
+    def __hash__(self) -> int:
+        """Needed to use Version objects as dict keys."""
+        return hash(self._root)
 
-    @Version.__lt__.register(str)  # pylint: disable=no-member
-    def _(self, other):
-        return self < Version(other)
+    def __repr__(self) -> str:
+        """Return string representation of Version object."""
+        return self._root
 
-    @Version.__gt__.register(str)  # pylint: disable=no-member
-    def _(self, other):
-        return self > Version(other)
 
-else:  # PYDANTIC_V1
+@Version.__eq__.register(str)  # pylint: disable=no-member
+def _(self, other):
+    return self == Version(other)
 
-    class Version(BaseModel):
-        """SemVer object."""
 
-        version: str
+@Version.__lt__.register(str)  # pylint: disable=no-member
+def _(self, other):
+    return self < Version(other)
 
-        def __init__(self, version: str) -> None:
-            """Initialize Version object."""
-            super().__init__(version=version)
 
-        @validator("version")
-        def semantic_version(
-            cls,
-            value,
-        ):  # ruff: noqa: ANN202, N805, ANN001
-            """Pydantic Validator to check semver."""
-            assert bool(
-                SEMVER_REGEX.match(value),
-            ), f"""Invalid version ({value}).
-            Version must follow semantic versioning (see semver.org)"""
-
-            return value
-
-        @property
-        def major(self):
-            """Return x from x.y.z ."""
-            return int(self.version.split(".")[0])
-
-        @property
-        def minor(self):
-            """Return y from x.y.z ."""
-            return int(self.version.split(".")[1])
-
-        @property
-        def patch(self):
-            """Return z from x.y.z ."""
-            return int(self.version.split(".")[2])
-
-        @property
-        def prerelease(self):
-            """Return q from x.y.z.q ."""
-            match = SEMVER_REGEX.match(self.version)
-            return match.group("prerelease")
-
-        @property
-        def buildmetadata(self):
-            """Return q from x.y.z.q ."""
-            match = SEMVER_REGEX.match(self.version)
-            return match.group("buildmetadata")
-
-        def __str__(self) -> str:
-            """Return string representation of Version object."""
-            return self.version
-
-        @singledispatchmethod
-        def __lt__(self, other: Any) -> bool:
-            """Compare if Version is less than other object."""
-            msg = "invalid type for comparison."
-            raise TypeError(msg)
-
-        @singledispatchmethod
-        def __gt__(self, other: Any) -> bool:
-            """Compare if Version is less than other object."""
-            msg = "invalid type for comparison."
-            raise TypeError(msg)
-
-        @singledispatchmethod
-        def __eq__(self, other: Any) -> bool:
-            """Compare if two Version objects are equal."""
-            msg = "invalid type for comparison."
-            raise TypeError(msg)
-
-        def __hash__(self) -> int:
-            """Needed to use Version objects as dict keys."""
-            return hash(self.version)
-
-    @Version.__eq__.register(str)  # pylint: disable=no-member
-    def _(self, other):
-        return self == Version(**{"version": other})
-
-    @Version.__lt__.register(str)  # pylint: disable=no-member
-    def _(self, other):
-        v = Version(**{"version": other})
-        return self < v
-
-    @Version.__gt__.register(str)  # pylint: disable=no-member
-    def _(self, other):
-        v = Version(**{"version": other})
-        return self > v
+@Version.__gt__.register(str)  # pylint: disable=no-member
+def _(self, other):
+    return self > Version(other)
 
 
 @Version.__eq__.register(Version)  # pylint: disable=no-member
@@ -463,7 +337,7 @@ def _(self, other):
     )
 
 
-def prerelease_lt(pre1: str, pre2: str) -> bool:  # pylint: disable=R0911
+def prerelease_lt(pre1: str, pre2: str) -> bool:
     """Check for precedence in prerelease versions.
 
     Follows the algorithm defined in [semver.org](https://semver.org/#spec-item-11)

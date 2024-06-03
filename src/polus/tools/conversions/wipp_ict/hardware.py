@@ -1,11 +1,11 @@
 """WIPP Hardware Requirements Functions."""
 
 # import polus.plugins as pp
-from polus.tools.plugins._plugins.models.pydanticv2.wipp import (
+from ict.hardware import CPU, GPU, HardwareRequirements, Memory
+
+from polus.tools.plugins._plugins.models.wipp import (
     ResourceRequirements as WIPPResourceRequirements,
 )
-
-from ict.hardware import CPU, GPU, HardwareRequirements, Memory
 
 
 def convert_wipp_hardware_to_ict(
