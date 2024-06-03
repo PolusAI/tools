@@ -274,16 +274,6 @@ class Input(IOBase):  # pylint: disable=R0903
             )
 
 
-def _check_version_number(value: Union[str, int]) -> bool:
-    if isinstance(value, int):
-        value = str(value)
-    if "-" in value:
-        value = value.split("-")[0]
-    if len(value) > 1 and value[0] == "0":
-        return False
-    return bool(re.match(r"^\d+$", value))
-
-
 SEMVER_REGEX = re.compile(
     "^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\."
     "(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]"
