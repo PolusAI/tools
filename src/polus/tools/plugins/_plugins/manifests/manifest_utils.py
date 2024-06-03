@@ -12,6 +12,7 @@ from pydantic import ValidationError, errors
 from tqdm import tqdm
 
 from polus.tools.plugins._plugins._compat import PYDANTIC_V2
+from polus.tools.plugins._plugins.io import Version
 from polus.tools.plugins._plugins.models import ComputeSchema, WIPPPluginManifest
 
 if not PYDANTIC_V2:
@@ -90,6 +91,8 @@ def validate_manifest(
         manifest["version"] = cast_version(
             manifest["version"],
         )  # cast version to semver object
+    else:
+        manifest["version"] = Version(manifest["version"])  # noqa
     if "name" in manifest:
         name = manifest["name"]
     else:
