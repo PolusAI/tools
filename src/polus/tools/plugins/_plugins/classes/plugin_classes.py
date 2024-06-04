@@ -191,11 +191,12 @@ class Plugin(WIPPPluginManifest, BasePlugin):
         """Set I/O parameters as attributes."""
         BasePlugin.__setattr__(self, name, value)
 
-    def save_config(self, path: Union[str, Path]) -> None:
+    def save_config(self, path: Union[str, Path]) -> Path:
         """Save manifest with configured I/O parameters to specified path."""
         with Path(path).open("w", encoding="utf-8") as file:
             json.dump(_get_config(self, "WIPP"), file, indent=4, default=str)
-        logger.debug(f"Saved config to {path}")
+        logger.debug(f"Saved config to {Path(path).absolute()}")
+        return Path(path).absolute()
 
     def __repr__(self) -> str:
         """Print plugin name and version."""
