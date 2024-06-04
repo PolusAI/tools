@@ -100,9 +100,6 @@ def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
         # overwrite val if enum
         if io.type.value == "enum":
             model_["_io_keys"][io_name]["value"] = io.value.name  # str
-        elif io["type"] == "enum":  # pydantic V1
-            val_ = io["value"].name  # mapDirectory.raw
-            model_["_io_keys"][io_name]["value"] = val_.split(".")[-1]  # raw
     for inp in model_["inputs"]:
         inp["value"] = None
     model_["class"] = class_
