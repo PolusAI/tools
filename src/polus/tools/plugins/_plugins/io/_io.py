@@ -202,6 +202,7 @@ class Output(IOBase):  # pylint: disable=R0903
         examples=["Output collection"],
         title="Output description",
     )
+    type: OutputTypes
 
 
 class Input(IOBase):  # pylint: disable=R0903

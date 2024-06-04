@@ -93,6 +93,7 @@ def list_plugins() -> list:
 
 def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
     model_ = json.loads(plugin.model_dump_json())
+    model_["version"] = model_["version"]["_root"]
     model_["_io_keys"] = deepcopy(plugin._io_keys)  # type: ignore
     # iterate over I/O to convert to dict
     for io_name, io in model_["_io_keys"].items():
@@ -101,6 +102,8 @@ def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
         if io.type.value == "enum":
             model_["_io_keys"][io_name]["value"] = io.value.name  # str
     for inp in model_["inputs"]:
+        inp["value"] = None
+    for inp in model_["outputs"]:
         inp["value"] = None
     model_["class"] = class_
     return model_
