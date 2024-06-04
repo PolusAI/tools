@@ -132,6 +132,8 @@ class Plugin(WIPPPluginManifest, BasePlugin):
 
         super().__init__(**data)
 
+        self.class_name = name_cleaner(self.name)
+
         self._io_keys = {i.name: i for i in self.inputs}
         self._io_keys.update({o.name: o for o in self.outputs})
 
@@ -145,7 +147,7 @@ class Plugin(WIPPPluginManifest, BasePlugin):
     @property
     def versions(self) -> list:  # cannot be in PluginMethods because PLUGINS lives here
         """Return list of local versions of a Plugin."""
-        return list(PLUGINS[name_cleaner(self.name)])
+        return list(PLUGINS[self.class_name])
 
     def to_compute(
         self,
@@ -272,6 +274,7 @@ class ComputePlugin(ComputeSchema, BasePlugin):
         data["version"] = Version(data["version"])
         super().__init__(**data)
         self.Config.allow_mutation = True
+        self.class_name = name_cleaner(self.name)
         self._io_keys = {i.name: i for i in self.inputs}
         self._io_keys.update({o.name: o for o in self.outputs})  # type: ignore
 
@@ -285,7 +288,7 @@ class ComputePlugin(ComputeSchema, BasePlugin):
     @property
     def versions(self) -> list:  # cannot be in PluginMethods because PLUGINS lives here
         """Return list of local versions of a Plugin."""
-        return list(PLUGINS[name_cleaner(self.name)])
+        return list(PLUGINS[self.class_name])
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
         """Set I/O parameters as attributes."""

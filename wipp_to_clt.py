@@ -16,7 +16,6 @@ from tqdm import tqdm
 
 from polus.tools.conversions import wipp_to_clt
 from polus.tools.plugins._plugins.classes import _load_plugin
-from polus.tools.plugins._plugins.utils import name_cleaner
 
 app = typer.Typer(help="Convert WIPP manifests to CLT.")
 fhandler = logging.FileHandler("wipp_to_clt_conversion.log")
@@ -79,7 +78,7 @@ def main(
         n = len(local_manifests)
         for manifest in tqdm(local_manifests):
             try:
-                name_ = name_cleaner(_load_plugin(manifest).name)
+                name_ = _load_plugin(manifest).class_name
                 wipp_to_clt(manifest, manifest.with_name(f"{name_}.cwl"))
                 converted += 1
 
@@ -89,7 +88,7 @@ def main(
         n = 1
         for manifest in [x for x in local_manifests if name in str(x)]:
             try:
-                name_ = name_cleaner(_load_plugin(manifest).name)
+                name_ = _load_plugin(manifest).class_name
                 wipp_to_clt(manifest, manifest.with_name(f"{name_}.cwl"))
                 converted += 1
 
