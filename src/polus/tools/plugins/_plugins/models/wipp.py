@@ -19,7 +19,7 @@ from polus.tools.plugins._plugins.models.WIPPPluginSchema import (
 class UI1(BaseModel):
     """Base class for UI items."""
 
-    key: str = Field(constr=r"^inputs.[a-zA-Z0-9][-a-zA-Z0-9]*$")
+    key: str = Field(pattern=r"^inputs.[a-zA-Z0-9][-a-zA-Z0-9]*$")
     title: str
     description: Optional[str] = None
     condition: Optional[str] = None
