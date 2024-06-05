@@ -9,7 +9,6 @@ import signal
 from pathlib import Path
 from typing import Any, Optional, TypeVar, Union
 
-import fsspec
 import yaml  # type: ignore
 from cwltool.context import RuntimeContext
 from cwltool.factory import Factory
@@ -189,16 +188,6 @@ class BasePlugin:
         return super().__getattribute__(name)
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa
-        if name == "_fs":
-            if not issubclass(type(value), fsspec.spec.AbstractFileSystem):
-                msg = "_fs must be an fsspec FileSystem"
-                raise ValueError(msg)
-            for i in self.inputs:
-                i._fs = value
-            for o in self.outputs:
-                o._fs = value
-            return
-
         if name == "class_name":
             super().__setattr__(name, value)
             return
