@@ -6,10 +6,10 @@ import pathlib
 from typing import Optional, Union
 
 import github
-import requests
-import validators
+import requests  # type: ignore
+import validators  # type: ignore
 from pydantic import ValidationError, errors
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 from polus.tools.plugins._plugins.io import Version
 from polus.tools.plugins._plugins.models import WIPPPluginManifest
@@ -37,18 +37,24 @@ def is_valid_manifest(plugin: dict) -> bool:
     """Validate basic attributes of a plugin manifest.
 
     Args:
-        plugin: A parsed plugin json file
+        plugin: a parsed plugin json file
 
     Returns:
-        True if the plugin has the minimal json fields
+        `True` if the plugin has the minimal json fields
     """
-    fields = list(plugin.keys())
+    fields = set(plugin.keys())
+    required_fields = set(REQUIRED_FIELDS)
 
-    for field in REQUIRED_FIELDS:
-        if field not in fields:
-            msg = f"Missing json field, {field}, in plugin manifest."
-            logger.error(msg)
-            return False
+    diff = required_fields - fields
+    if len(diff) > 0:
+        if "name" in fields:
+            msg = f"missing json fields {diff} in {plugin['name']}."
+        elif "title" in fields:
+            msg = f"missing json fields {diff} in {plugin['title']}."
+        else:
+            msg = f"missing json fields {diff} in {plugin}."
+        logger.error(msg)
+        return False
     return True
 
 
@@ -128,7 +134,9 @@ def _scrape_manifests(
         for content in tqdm(contents, desc=f"{repo.full_name}: {d}"):
             if content.type == "dir":
                 next_contents.extend(repo.get_contents(content.path))  # type: ignore
-            elif content.name.endswith(".json") and d >= min_depth:
+            elif content.name.endswith("plugin.json") and d >= min_depth:
+                if "cookiecutter" in content.name:
+                    continue
                 manifest = json.loads(content.decoded_content)
                 if is_valid_manifest(manifest):
                     valid_manifests.append(manifest)

@@ -31,7 +31,7 @@ def _init_github(auth=None):
         logger.debug("Github auth token supplied as input.")
 
     gh = github.Github(login_or_token=auth)
-    logger.debug(
+    logger.debug(  # pylint: disable=W1203
         f"Initialized Github connection with token for user: {gh.get_user().login}"
     )
 
@@ -42,18 +42,18 @@ def add_plugin_from_gh(
     user: str,
     branch: str,
     plugin: str,
-    repo: str = "polus-plugins",
+    repo: str = "image-tools",
     manifest_name: str = "plugin.json",
 ):
     """Add plugin from GitHub.
 
-    This function adds a plugin hosted on GitHub and returns a Plugin object.
+    This function submits a plugin hosted on GitHub and returns a Plugin object.
 
     Args:
         user: GitHub username
         branch: GitHub branch
         plugin: Plugin's name
-        repo: Name of GitHub repository, default is `polus-plugins`
+        repo: Name of GitHub repository, default is `image-tools`
         manifest_name: Name of manifest file, default is `plugin.json`
 
     Returns:
@@ -62,5 +62,5 @@ def add_plugin_from_gh(
     l1 = [user, repo, branch, plugin, manifest_name]
     u = "/".join(l1)
     url = urljoin("https://raw.githubusercontent.com", u)
-    logger.info("Adding %s" % url)
-    return submit_plugin(url, refresh=True)
+    logger.info(f"Adding {url}")  # pylint: disable=W1203
+    return submit_plugin(url)

@@ -8,9 +8,9 @@ import pathlib
 import re
 from functools import singledispatch, singledispatchmethod
 from itertools import zip_longest
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, PrivateAttr, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 from pydantic.dataclasses import dataclass
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated
@@ -30,9 +30,6 @@ class DuplicateVersionFoundError(Exception):
     """Raise when two equal versions found."""
 
 
-"""
-Enums for validating plugin input, output, and ui components.
-"""
 WIPP_TYPES = {
     "collection": pathlib.Path,
     "pyramid": pathlib.Path,

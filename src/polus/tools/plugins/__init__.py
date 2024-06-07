@@ -7,6 +7,9 @@ from typing import Union
 
 from polus.tools.plugins._plugins.classes import Plugin  # pylint: disable=unused-import
 from polus.tools.plugins._plugins.classes import (
+    _refresh,  # pylint: disable=unused-import
+)
+from polus.tools.plugins._plugins.classes import (
     get_plugin,  # pylint: disable=unused-import
 )
 from polus.tools.plugins._plugins.classes import (
@@ -16,10 +19,10 @@ from polus.tools.plugins._plugins.classes import (
     load_config,  # pylint: disable=unused-import
 )
 from polus.tools.plugins._plugins.classes import (
-    refresh,  # pylint: disable=unused-import
+    remove_all,  # pylint: disable=unused-import
 )
 from polus.tools.plugins._plugins.classes import (
-    remove_all,  # pylint: disable=unused-import
+    validate_local_manifests,  # pylint: disable=unused-import
 )
 from polus.tools.plugins._plugins.classes import (  # pylint: disable=unused-import
     remove_plugin,
@@ -41,7 +44,7 @@ logger = logging.getLogger("polus.tools.plugins")
 #     VERSION = version_file.read().strip()
 
 
-refresh()  # calls the refresh method when library is imported
+_refresh(supress_warnings=True)  # calls the refresh method when library is imported
 
 
 def __getattr__(name: str) -> Union[Plugin, list]:
@@ -54,11 +57,11 @@ def __getattr__(name: str) -> Union[Plugin, list]:
 
 
 __all__ = [
-    "refresh",
     "submit_plugin",
     "get_plugin",
     "load_config",
     "list_plugins",
+    "validate_local_manifests",
     "update_polus_plugins",
     "update_nist_plugins",
     "remove_all",

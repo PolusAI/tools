@@ -1,6 +1,6 @@
-"""Init IO module."""
+"""IO module for polus-plugins."""
 
-from polus.tools.plugins._plugins.io._io import (
+from polus.tools.plugins._plugins.io._io import (  # type: ignore
     Input,
     IOBase,
     Output,

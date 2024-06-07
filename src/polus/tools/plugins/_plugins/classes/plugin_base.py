@@ -72,7 +72,16 @@ class BasePlugin:
         gpus: Union[None, str, int] = "all",
         **kwargs: Union[None, str, int],
     ) -> None:
-        """Run plugin in Docker container."""
+        """Run plugin in Docker container using `python-on-whales`.
+
+        All the arguments that could be passed to `docker run ...`
+        can be passed as keyword arguments. For example, to set
+        the container's memory limit to 2GB, the keyword argument
+        `memory` can be set to `2g`.
+
+        Args:
+            gpus: `--gpus` value to pass to Docker. Default is `all`.
+        """
         self._check_inputs()
         inp_dirs = [x for x in self.inputs if isinstance(x.value, Path)]
         out_dirs = [x for x in self.outputs if isinstance(x.value, Path)]
@@ -129,7 +138,8 @@ class BasePlugin:
         def sig(
             signal,  # noqa # pylint: disable=W0613, W0621
             frame,  # noqa # pylint: disable=W0613, W0621
-        ) -> None:  # signal handler to kill container when KeyboardInterrupt
+        ) -> None:
+            """Signal handler to kill container when `KeyboardInterrupt`."""
             logger.info(f"Exiting container {container_name}")
             docker.kill(container_name)
 
@@ -148,7 +158,7 @@ class BasePlugin:
                 name=container_name,
                 remove=True,
                 mounts=mnts,
-                **kwargs,
+                **kwargs,  # type: ignore
             )
             print(docker_)  # noqa
         else:
@@ -163,7 +173,7 @@ class BasePlugin:
                 name=container_name,
                 remove=True,
                 mounts=mnts,
-                **kwargs,
+                **kwargs,  # type: ignore
             )
             print(docker_)  # noqa
 
@@ -215,7 +225,7 @@ class BasePlugin:
 
 
         Args:
-            network_access: bool
+            network_access:
                 Default is `False`. If set to `True`, the
                 requirements of the CLT will include
                 `networkAccess`: `True`.
@@ -252,7 +262,7 @@ class BasePlugin:
         return Path(path)
 
     def save_clt(self, path: StrPath, network_access: bool = False) -> Path:
-        """Save plugin as CWL CommandLineTool."""
+        """Alias for `save_cwl()`."""
         return self.save_cwl(path, network_access)
 
     @property
@@ -321,7 +331,13 @@ class BasePlugin:
         return self.version < other.version
 
     def __gt__(self, other: "BasePlugin") -> bool:
-        return other.version < self.version
+        return self.version > other.version
+
+    def __ge__(self, other: "BasePlugin") -> bool:
+        return self.version >= other.version
+
+    def __le__(self, other: "BasePlugin") -> bool:
+        return self.version <= other.version
 
     def __repr__(self) -> str:
         return (

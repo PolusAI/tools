@@ -205,7 +205,6 @@ def test_prerelease_version_sort():
     ]
     versions_sorted = [Version(v) for v in versions_sorted]
     versions_to_sort = [Version(v) for v in versions_to_sort]
-    print(sorted(versions_to_sort))
     assert sorted(versions_to_sort) == versions_sorted
 
 
@@ -222,3 +221,117 @@ def test_lt_build_metadata(ver):
     to A, but we are checking that A is not smaller than B.
     """
     assert not Version(ver[0]) < Version(ver[1])  # pylint: disable=C0117
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "1.0.0",
+        "1.0.1",
+        "1.2.4",
+        "0.2.3",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "0.4.1-rc.1",
+        "12.21.23-beta.12",
+        "1.10.12-alpha.1+2322",
+    ],
+    ids=[
+        "1.0.0",
+        "1.0.1",
+        "1.2.4",
+        "0.2.3",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "0.4.1-rc.1",
+        "12.21.23-beta.12",
+        "1.10.12-alpha.1+2322",
+    ],
+)
+def test_le(ver):
+    """Test less than or equal operator."""
+    assert ver <= Version("12.21.23-beta.12")
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "1.0.0",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "12.21.23-beta.12",
+    ],
+    ids=[
+        "1.0.0",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "12.21.23-beta.12",
+    ],
+)
+def test_le_str(ver):
+    """Test less than or equal operator with strings."""
+    assert ver <= "12.21.23-beta.12"
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "12.21.23-charlie",
+        "12.21.23-charlie.10",
+        "15.0.2",
+        "12.21.24-beta.12",
+        "12.21.24",
+        "13.0.0",
+        "12.21.23-beta.12",
+    ],
+    ids=[
+        "12.21.23-charlie",
+        "12.21.23-charlie.10",
+        "15.0.2",
+        "12.21.24-beta.12",
+        "12.21.24",
+        "13.0.0",
+        "12.21.23-beta.12",
+    ],
+)
+def test_ge(ver):
+    """Test less than or equal operator."""
+    assert ver >= Version("12.21.23-beta.12")
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "12.21.23-charlie",
+        "12.21.23-charlie.10",
+        "15.0.2",
+        "12.21.24-beta.12",
+        "12.21.24",
+        "13.0.0",
+        "12.21.23-beta.12",
+    ],
+    ids=[
+        "12.21.23-charlie",
+        "12.21.23-charlie.10",
+        "15.0.2",
+        "12.21.24-beta.12",
+        "12.21.24",
+        "13.0.0",
+        "12.21.23-beta.12",
+    ],
+)
+def test_ge_str(ver):
+    """Test less than or equal operator with strings."""
+    assert ver >= "12.21.23-beta.12"

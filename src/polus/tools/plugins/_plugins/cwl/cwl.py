@@ -1,3 +1,5 @@
+"""CWL module."""
+
 from pathlib import Path
 
 import yaml  # type: ignore
