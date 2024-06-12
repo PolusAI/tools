@@ -10,6 +10,7 @@ from polus.tools.plugins._plugins.classes import Plugin, _load_plugin
 
 RSRC_PATH = Path(__file__).parent.joinpath("resources")
 OMECONVERTER = RSRC_PATH.joinpath("omeconverter022.json")
+OMECONVERTERDEV = RSRC_PATH.joinpath("omeconverter032dev0.json")
 BASIC_131 = (
     "https://raw.githubusercontent.com/PolusAI/polus-plugins/"
     "e8f23a3661e3e5f7ad7dc92f4b0d9c31e7076589/regression/"
@@ -42,6 +43,11 @@ def test_submit_plugin(remove_all):
 @pytest.fixture
 def submit_omeconverter():
     pp.submit_plugin(OMECONVERTER)
+
+
+@pytest.fixture
+def submit_omeconverterdev():
+    pp.submit_plugin(OMECONVERTERDEV)
 
 
 @pytest.fixture
@@ -111,6 +117,18 @@ def test_get_max_version1(submit_basic131, submit_basic127):
     """Test get max version."""
     plug = pp.get_plugin("BasicFlatfieldCorrectionPlugin")
     assert plug.version == "1.3.1"
+
+
+def test_get_max_version1_pypi(submit_basic131, submit_basic127):
+    """Test get max version pypi."""
+    plug = pp.get_plugin("BasicFlatfieldCorrectionPlugin")
+    assert plug.pypi_version == "1.3.1"
+
+
+def test_dev_version_pypi(submit_omeconverterdev):
+    """Test dev version pypi."""
+    plug = pp.get_plugin("OmeConverter")
+    assert plug.pypi_version == "0.3.2.dev0"
 
 
 def test_get_max_version2(submit_basic131, submit_basic127):

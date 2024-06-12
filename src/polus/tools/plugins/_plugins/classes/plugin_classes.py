@@ -15,6 +15,7 @@ from polus.tools.plugins._plugins.classes.plugin_base import BasePlugin
 from polus.tools.plugins._plugins.io._io import (  # type: ignore
     DuplicateVersionFoundError,
     Version,
+    _semver_to_pypi,
 )
 from polus.tools.plugins._plugins.manifests import (
     InvalidManifestError,
@@ -159,6 +160,25 @@ class Plugin(WIPPPluginManifest, BasePlugin):
     def versions(self) -> list:  # cannot be in PluginMethods because PLUGINS lives here
         """Return list of local versions of a Plugin."""
         return list(PLUGINS[self.class_name])
+
+    @property
+    def pypi_version(self) -> str:
+        """Return the PyPI compatible version of the plugin.
+
+        PyPI versions and SemVer versions are not the same.
+        For example, "0.1.0-dev2" is a valid SemVer version but
+        not a valid PyPI version. This method converts the SemVer
+        version to a PyPI compatible version using the `packaging` library.
+        See [here](https://packaging.python.org/en/latest/specifications/\
+version-specifiers/#semantic-versioning)
+        for more information.
+
+        """
+        try:
+            py_ = _semver_to_pypi(self.version)  # self.version is SemVer
+        except Exception as exc:
+            raise exc
+        return str(py_)
 
     def save_manifest(
         self,
