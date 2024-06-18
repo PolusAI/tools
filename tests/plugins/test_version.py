@@ -1,6 +1,5 @@
 """Test Version object and cast_version utility function."""
 
-import pydantic
 import pytest
 from pydantic import ValidationError
 
@@ -109,3 +108,117 @@ def test_eq_no_str():
     """Test equality with non-string."""
     with pytest.raises(TypeError):
         assert Version("1.3.3") == 1.3
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "1.0.0",
+        "1.0.1",
+        "1.2.4",
+        "0.2.3",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "0.4.1-rc.1",
+        "12.21.23-beta.12",
+        "1.10.12-alpha.1+2322",
+    ],
+    ids=[
+        "1.0.0",
+        "1.0.1",
+        "1.2.4",
+        "0.2.3",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "0.4.1-rc.1",
+        "12.21.23-beta.12",
+        "1.10.12-alpha.1+2322",
+    ],
+)
+def test_version_good_1(ver):
+    """Test Correct Versions.
+
+    Added after new regex implementation.
+    """
+    v = Version(ver)
+    assert isinstance(v, Version)
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "1.02.0",
+        "1.0",
+        "1.2.04",
+        "04.2.3",
+        "12.2.alpha",
+        "0.2.1.alpha",
+        "10",
+    ],
+    ids=[
+        "1.02.0",
+        "1.0",
+        "1.2.04",
+        "04.2.3",
+        "12.2.alpha",
+        "0.2.1.alpha",
+        "10",
+    ],
+)
+def test_version_bad_1(ver):
+    """Test Incorrect Versions.
+
+    Added after new regex implementation.
+    """
+    with pytest.raises(ValueError):
+        Version(ver)
+
+
+def test_prerelease_version_sort():
+    """Test prerelease version sorting."""
+    versions_sorted = [
+        "1.0.0-alpha",
+        "1.0.0-alpha.1",
+        "1.0.0-alpha.beta",
+        "1.0.0-beta",
+        "1.0.0-beta.2",
+        "1.0.0-beta.11",
+        "1.0.0-rc.1",
+        "1.0.0",
+    ]
+
+    versions_to_sort = [
+        "1.0.0-beta",
+        "1.0.0",
+        "1.0.0-alpha.1",
+        "1.0.0-alpha",
+        "1.0.0-beta.2",
+        "1.0.0-alpha.beta",
+        "1.0.0-rc.1",
+        "1.0.0-beta.11",
+    ]
+    versions_sorted = [Version(v) for v in versions_sorted]
+    versions_to_sort = [Version(v) for v in versions_to_sort]
+    print(sorted(versions_to_sort))
+    assert sorted(versions_to_sort) == versions_sorted
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [("1.3.3-alpha+123", "1.3.3-alpha+223"), ("1.3.3-alpha+123", "1.3.3-alpha")],
+    ids=["1.3.3-alpha+123", "1.3.3"],
+)
+def test_lt_build_metadata(ver):
+    """Test precedence with build metadata.
+
+    In this case, `assert not A < B` is used
+    since we are not checking that B is greater or equal
+    to A, but we are checking that A is not smaller than B.
+    """
+    assert not Version(ver[0]) < Version(ver[1])  # pylint: disable=C0117
