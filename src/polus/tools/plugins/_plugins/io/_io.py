@@ -10,7 +10,6 @@ from functools import singledispatch, singledispatchmethod
 from itertools import zip_longest
 from typing import Any, Optional, TypeVar, Union
 
-import fsspec
 from pydantic import BaseModel, Field, PrivateAttr, StringConstraints
 from pydantic.dataclasses import dataclass
 from pydantic.functional_validators import AfterValidator
@@ -88,9 +87,6 @@ class OutputTypes(str, enum.Enum):  # wipp schema
     PYRAMIDANNOTATION = "pyramidAnnotation"
 
 
-FileSystem = TypeVar("FileSystem", bound=fsspec.spec.AbstractFileSystem)
-
-
 class IOBase(BaseModel):  # pylint: disable=R0903
     """Base Class for I/O arguments."""
 
@@ -98,9 +94,6 @@ class IOBase(BaseModel):  # pylint: disable=R0903
     options: Optional[dict] = None
     value: Optional[Any] = None
     id_: Optional[Any] = None
-    _fs: Optional[FileSystem] = PrivateAttr(
-        default=None,
-    )  # type checking is done at plugin level
 
     def _validate(self, value) -> None:  # pylint: disable=R0912
 
@@ -134,24 +127,16 @@ class IOBase(BaseModel):  # pylint: disable=R0903
             value = WIPP_TYPES[self.type](value)
             if isinstance(value, pathlib.Path):
                 value = value.absolute()
-                if self._fs:
-                    assert self._fs.exists(
-                        str(value),
-                    ), f"{value} is invalid or does not exist"
-                    assert self._fs.isdir(
-                        str(value),
-                    ), f"{value} is not a valid directory"
-                else:
-                    if not value.exists():
-                        raise InvalidPathError(f"{value} is invalid or does not exist")
-                    if not value.is_dir():
-                        raise InvalidPathError(f"{value} is not a valid directory")
+                if not value.exists():
+                    raise InvalidPathError(f"{value} is invalid or does not exist")
+                if not value.is_dir():
+                    raise InvalidPathError(f"{value} is not a valid directory")
 
         super().__setattr__("value", value)
 
     def __setattr__(self, name: str, value: Any) -> None:  # ruff: noqa: ANN401
         """Set I/O attributes."""
-        if name not in ["value", "id", "_fs"]:
+        if name not in ["value", "id"]:
             # Don't permit any other values to be changed
             msg = f"Cannot set property: {name}"
             raise TypeError(msg)

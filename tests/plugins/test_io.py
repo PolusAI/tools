@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-from fsspec.implementations.local import LocalFileSystem
 
 from polus.tools.plugins._plugins.classes import _load_plugin
 from polus.tools.plugins._plugins.classes.plugin_base import IOKeyError
@@ -56,14 +55,3 @@ def test_set_attr_valid1():
 def test_set_attr_valid2():
     """Test setting valid attribute."""
     plugin.darkfield = True
-
-
-def test_set_fsspec():
-    """Test setting fs valid attribute."""
-    plugin._fs = LocalFileSystem()  # pylint: disable=protected-access
-
-
-def test_set_fsspec2():
-    """Test setting fs invalid attribute."""
-    with pytest.raises(ValueError):
-        plugin._fs = "./"  # pylint: disable=protected-access
