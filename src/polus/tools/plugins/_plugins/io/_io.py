@@ -88,30 +88,6 @@ class OutputTypes(str, enum.Enum):  # wipp schema
     PYRAMIDANNOTATION = "pyramidAnnotation"
 
 
-def _in_old_to_new(old: str) -> str:  # map wipp InputType to compute schema's InputType
-    """Map an InputType from wipp schema to one of compute schema."""
-    d = {"integer": "number", "enum": "string"}
-    if old in ["string", "array", "number", "boolean"]:
-        return old
-    if old in d:
-        return d[old]  # integer or enum
-    return "path"  # everything else
-
-
-def _ui_old_to_new(old: str) -> str:  # map wipp InputType to compute schema's UIType
-    """Map an InputType from wipp schema to a UIType of compute schema."""
-    type_dict = {
-        "string": "text",
-        "boolean": "checkbox",
-        "number": "number",
-        "array": "text",
-        "integer": "number",
-    }
-    if old in type_dict:
-        return type_dict[old]
-    return "text"
-
-
 FileSystem = TypeVar("FileSystem", bound=fsspec.spec.AbstractFileSystem)
 
 
@@ -244,11 +220,21 @@ class Input(IOBase):  # pylint: disable=R0903
 
 
 SEMVER_REGEX = re.compile(
-    "^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\."
-    "(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]"
-    "\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*"
-    "[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>"
-    "[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+    r"""
+    ^(?P<major>0|[1-9]\d*)\.
+    (?P<minor>0|[1-9]\d*)\.
+    (?P<patch>0|[1-9]\d*)
+    (?:-(?P<prerelease>
+        (?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)
+        (?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*
+    ))?
+    (?:\+(?P<buildmetadata>
+        [0-9a-zA-Z-]+
+        (?:\.[0-9a-zA-Z-]+)*
+    ))?
+    $
+    """,
+    re.VERBOSE,
 )
 
 

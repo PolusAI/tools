@@ -12,7 +12,7 @@ from pydantic import ValidationError, errors
 from tqdm import tqdm
 
 from polus.tools.plugins._plugins.io import Version
-from polus.tools.plugins._plugins.models import ComputeSchema, WIPPPluginManifest
+from polus.tools.plugins._plugins.models import WIPPPluginManifest
 
 logger = logging.getLogger("polus.plugins")
 
@@ -80,36 +80,24 @@ def _load_manifest(manifest: Union[str, dict, pathlib.Path]) -> dict:
 
 def validate_manifest(
     manifest: Union[str, dict, pathlib.Path],
-) -> Union[WIPPPluginManifest, ComputeSchema]:
+) -> WIPPPluginManifest:
     """Validate a plugin manifest against schema."""
     manifest = _load_manifest(manifest)
     manifest["version"] = Version(manifest["version"])  # noqa
-    if "name" in manifest:
-        name = manifest["name"]
-    else:
+    if not "name" in manifest:
         msg = f"{manifest} has no value for name"
         raise InvalidManifestError(msg)
 
-    if "pluginHardwareRequirements" in manifest:
-        # Parse the manifest
-        try:
-            plugin = ComputeSchema(**manifest)
-        except ValidationError as e:
-            msg = f"{name} does not conform to schema"
-            raise InvalidManifestError(msg) from e
-        except BaseException as e:
-            raise e
-    else:
-        # Parse the manifest
-        try:
-            plugin = WIPPPluginManifest(**manifest)
-        except ValidationError as e:
-            msg = f"{manifest['name']} does not conform to schema"
-            raise InvalidManifestError(
-                msg,
-            ) from e
-        except BaseException as e:
-            raise e
+    # Parse the manifest
+    try:
+        plugin = WIPPPluginManifest(**manifest)
+    except ValidationError as e:
+        msg = f"{manifest['name']} does not conform to schema"
+        raise InvalidManifestError(
+            msg,
+        ) from e
+    except BaseException as e:
+        raise e
     return plugin
 
 

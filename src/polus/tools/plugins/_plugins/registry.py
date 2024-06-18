@@ -10,12 +10,7 @@ import requests
 import xmltodict
 from tqdm import tqdm
 
-from polus.tools.plugins._plugins.classes import (
-    ComputePlugin,
-    Plugin,
-    refresh,
-    submit_plugin,
-)
+from polus.tools.plugins._plugins.classes import Plugin, refresh, submit_plugin
 from polus.tools.plugins._plugins.registry_utils import _generate_query, _to_xml
 
 logger = logging.getLogger("polus.plugins")
@@ -171,7 +166,7 @@ class WippPluginRegistry:
 
     def upload(
         self,
-        plugin: typing.Union[Plugin, ComputePlugin],
+        plugin: Plugin,
         author: typing.Optional[str] = None,
         email: typing.Optional[str] = None,
         publish: bool = True,

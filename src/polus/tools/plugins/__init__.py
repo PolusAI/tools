@@ -5,9 +5,6 @@ import logging
 # from pathlib import Path
 from typing import Union
 
-from polus.tools.plugins._plugins.classes import (
-    ComputePlugin,  # pylint: disable=unused-import
-)
 from polus.tools.plugins._plugins.classes import Plugin  # pylint: disable=unused-import
 from polus.tools.plugins._plugins.classes import (
     get_plugin,  # pylint: disable=unused-import
@@ -47,13 +44,11 @@ logger = logging.getLogger("polus.tools.plugins")
 refresh()  # calls the refresh method when library is imported
 
 
-def __getattr__(name: str) -> Union[Plugin, ComputePlugin, list]:
+def __getattr__(name: str) -> Union[Plugin, list]:
     if name == "list":
         return list_plugins()
     if name in list_plugins():
         return get_plugin(name)
-    # if name in ["__version__", "VERSION"]:
-    #     return VERSION
     msg = f"module '{__name__}' has no attribute '{name}'"
     raise AttributeError(msg)
 

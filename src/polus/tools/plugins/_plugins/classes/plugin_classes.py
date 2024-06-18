@@ -12,23 +12,13 @@ from typing import Any, Optional, Union
 from pydantic import ConfigDict
 
 from polus.tools.plugins._plugins.classes.plugin_base import BasePlugin
-from polus.tools.plugins._plugins.io._io import (
-    DuplicateVersionFoundError,
-    Version,
-    _in_old_to_new,
-    _ui_old_to_new,
-)
+from polus.tools.plugins._plugins.io._io import DuplicateVersionFoundError, Version
 from polus.tools.plugins._plugins.manifests import (
     InvalidManifestError,
     _load_manifest,
     validate_manifest,
 )
-from polus.tools.plugins._plugins.models import (
-    ComputeSchema,
-    PluginUIInput,
-    PluginUIOutput,
-    WIPPPluginManifest,
-)
+from polus.tools.plugins._plugins.models import WIPPPluginManifest
 from polus.tools.plugins._plugins.utils import name_cleaner
 
 logger = logging.getLogger("polus.plugins")
@@ -91,24 +81,6 @@ def list_plugins() -> list:
     return output
 
 
-def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
-    model_ = json.loads(plugin.model_dump_json())
-    model_["version"] = model_["version"]["_root"]
-    model_["_io_keys"] = deepcopy(plugin._io_keys)  # type: ignore
-    # iterate over I/O to convert to dict
-    for io_name, io in model_["_io_keys"].items():
-        model_["_io_keys"][io_name] = json.loads(io.model_dump_json())
-        # overwrite val if enum
-        if io.type.value == "enum":
-            model_["_io_keys"][io_name]["value"] = io.value.name  # str
-    for inp in model_["inputs"]:
-        inp["value"] = None
-    for inp in model_["outputs"]:
-        inp["value"] = None
-    model_["class"] = class_
-    return model_
-
-
 class Plugin(WIPPPluginManifest, BasePlugin):
     """WIPP Plugin Class.
 
@@ -152,49 +124,47 @@ class Plugin(WIPPPluginManifest, BasePlugin):
         """Return list of local versions of a Plugin."""
         return list(PLUGINS[self.class_name])
 
-    def to_compute(
-        self,
-        hardware_requirements: Optional[dict] = None,
-    ) -> type[ComputeSchema]:
-        """Convert WIPP Plugin object to Compute Plugin object."""
-        data = deepcopy(self.manifest)
-        return ComputePlugin(
-            hardware_requirements=hardware_requirements,
-            _from_old=True,
-            **data,
-        )
-
     def save_manifest(
         self,
         path: Union[str, Path],
-        hardware_requirements: Optional[dict] = None,
-        compute: bool = False,
-    ) -> None:
+    ) -> Path:
         """Save plugin manifest to specified path."""
-        if compute:
-            with Path(path).open("w", encoding="utf-8") as file:
-                self.to_compute(
-                    hardware_requirements=hardware_requirements,
-                ).save_manifest(path)
-        else:
-            with Path(path).open("w", encoding="utf-8") as file:
-                dict_ = self.manifest
-                json.dump(
-                    dict_,
-                    file,
-                    indent=4,
-                )
+        with Path(path).open("w", encoding="utf-8") as file:
+            dict_ = self.manifest
+            json.dump(
+                dict_,
+                file,
+                indent=4,
+            )
 
-        logger.debug(f"Saved manifest to {path}")
+        logger.debug(f"Saved manifest to {Path(path).absolute()}")
+        return Path(path).absolute()
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
         """Set I/O parameters as attributes."""
         BasePlugin.__setattr__(self, name, value)
 
+    @property
+    def _config(self) -> dict:
+        model_ = json.loads(self.model_dump_json())
+        model_["version"] = model_["version"]["_root"]
+        model_["_io_keys"] = deepcopy(self._io_keys)  # type: ignore
+        # iterate over I/O to convert to dict
+        for io_name, io in model_["_io_keys"].items():
+            model_["_io_keys"][io_name] = json.loads(io.model_dump_json())
+            # overwrite val if enum
+            if io.type.value == "enum":
+                model_["_io_keys"][io_name]["value"] = io.value.name  # str
+        for inp in model_["inputs"]:
+            inp["value"] = None
+        for inp in model_["outputs"]:
+            inp["value"] = None
+        return model_
+
     def save_config(self, path: Union[str, Path]) -> Path:
         """Save manifest with configured I/O parameters to specified path."""
         with Path(path).open("w", encoding="utf-8") as file:
-            json.dump(_get_config(self, "WIPP"), file, indent=4, default=str)
+            json.dump(self._config, file, indent=4, default=str)
         logger.debug(f"Saved config to {Path(path).absolute()}")
         return Path(path).absolute()
 
@@ -203,135 +173,18 @@ class Plugin(WIPPPluginManifest, BasePlugin):
         return BasePlugin.__repr__(self)
 
 
-class ComputePlugin(ComputeSchema, BasePlugin):
-    """Compute Plugin Class.
-
-    Contains methods to configure, run, and save plugins.
-
-    Attributes:
-        versions: A list of local available versions for this plugin.
-
-    Methods:
-        save_manifest(path): save plugin manifest to specified path
-    """
-
-    model_config = ConfigDict(extra="allow", frozen=True)
-
-    def __init__(
-        self,
-        hardware_requirements: Optional[dict] = None,
-        _from_old: bool = False,
-        _uuid: bool = True,
-        **data: dict,
-    ) -> None:
-        """Init a plugin object from manifest."""
-        if _uuid:
-            data["id"] = uuid.uuid4()  # type: ignore
-        else:
-            data["id"] = uuid.UUID(str(data["id"]))  # type: ignore
-
-        if _from_old:
-
-            def _convert_input(dict_: dict) -> dict:
-                dict_["type"] = _in_old_to_new(dict_["type"])
-                return dict_
-
-            def _convert_output(dict_: dict) -> dict:
-                dict_["type"] = "path"
-                return dict_
-
-            def _ui_in(dict_: dict) -> PluginUIInput:  # assuming old all ui input
-                # assuming format inputs. ___
-                inp = dict_["key"].split(".")[-1]  # e.g inpDir
-                try:
-                    type_ = [x["type"] for x in data["inputs"] if x["name"] == inp][
-                        0
-                    ]  # get type from i/o
-                except IndexError:
-                    type_ = "string"  # default to string
-                except BaseException as exc:
-                    raise exc
-
-                dict_["type"] = _ui_old_to_new(type_)
-                return PluginUIInput(**dict_)
-
-            def _ui_out(dict_: dict) -> PluginUIOutput:
-                new_dict_ = deepcopy(dict_)
-                new_dict_["name"] = "outputs." + new_dict_["name"]
-                new_dict_["type"] = _ui_old_to_new(new_dict_["type"])
-                return PluginUIOutput(**new_dict_)
-
-            data["inputs"] = [_convert_input(x) for x in data["inputs"]]  # type: ignore
-            data["outputs"] = [
-                _convert_output(x) for x in data["outputs"]
-            ]  # type: ignore
-            data["pluginHardwareRequirements"] = {}
-            data["ui"] = [_ui_in(x) for x in data["ui"]]  # type: ignore
-            data["ui"].extend(  # type: ignore[attr-defined]
-                [_ui_out(x) for x in data["outputs"]],
-            )
-
-        if hardware_requirements:
-            for k, v in hardware_requirements.items():
-                data["pluginHardwareRequirements"][k] = v
-
-        data["version"] = Version(data["version"])
-        super().__init__(**data)
-        self.Config.allow_mutation = True
-        self.class_name = name_cleaner(self.name)
-        self._io_keys = {i.name: i for i in self.inputs}
-        self._io_keys.update({o.name: o for o in self.outputs})  # type: ignore
-
-        if not self.author:
-            warn_msg = (
-                f"The plugin ({self.name}) is missing the author field. "
-                "This field is not required but should be filled in."
-            )
-            logger.warning(warn_msg)
-
-    @property
-    def versions(self) -> list:  # cannot be in PluginMethods because PLUGINS lives here
-        """Return list of local versions of a Plugin."""
-        return list(PLUGINS[self.class_name])
-
-    def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
-        """Set I/O parameters as attributes."""
-        BasePlugin.__setattr__(self, name, value)
-
-    def save_config(self, path: Union[str, Path]) -> None:
-        """Save configured manifest with I/O parameters to specified path."""
-        with Path(path).open("w", encoding="utf-8") as file:
-            json.dump(_get_config(self, "Compute"), file, indent=4, default=str)
-        logger.debug(f"Saved config to {path}")
-
-    def save_manifest(self, path: Union[str, Path]) -> None:
-        """Save plugin manifest to specified path."""
-        with Path(path).open("w", encoding="utf-8") as file:
-            json.dump(self.manifest, file, indent=4)
-        logger.debug(f"Saved manifest to {path}")
-
-    def __repr__(self) -> str:
-        """Print plugin name and version."""
-        return BasePlugin.__repr__(self)
-
-
 def _load_plugin(
     manifest: Union[str, dict, Path],
-) -> Union[Plugin, ComputePlugin]:
-    """Parse a manifest and return one of Plugin or ComputePlugin."""
+) -> Plugin:
+    """Parse a manifest and return Plugin."""
     manifest = _load_manifest(manifest)
-    if "pluginHardwareRequirements" in manifest:  # type: ignore[operator]
-        # Parse the manifest
-        plugin = ComputePlugin(**manifest)  # type: ignore[arg-type]
-    else:
-        # Parse the manifest
-        plugin = Plugin(**manifest)  # type: ignore[arg-type]
+    plugin = Plugin(**manifest)  # type: ignore[arg-type]
     return plugin
 
 
 def submit_plugin(
     manifest: Union[str, dict, Path],
-) -> Union[Plugin, ComputePlugin]:
+) -> Plugin:
     """Parse a plugin and create a local copy of it.
 
     This function accepts a plugin manifest as a string, a dictionary (parsed
@@ -366,16 +219,16 @@ def submit_plugin(
 
     # Refresh plugins list
     refresh()
-    return plugin
+    return _load_plugin(org_path.joinpath(out_name))
 
 
 def get_plugin(
     name: str,
     version: Optional[Union[str, Version]] = None,
-) -> Union[Plugin, ComputePlugin]:
+) -> Plugin:
     """Get a plugin with option to specify version.
 
-    Return a plugin object with the option to specify a version.
+    Return a plugin with the option to specify a version.
     The specified version's manifest must exist in manifests folder.
 
     Args:
@@ -383,7 +236,7 @@ def get_plugin(
         version: Optional version of the plugin, must follow semver.
 
     Returns:
-        Plugin object
+        Plugin
     """
     if version is None:
         return _load_plugin(PLUGINS[name][max(PLUGINS[name])])
@@ -391,7 +244,7 @@ def get_plugin(
     return _load_plugin(PLUGINS[name][version_])
 
 
-def load_config(config: Union[dict, Path, str]) -> Union[Plugin, ComputePlugin]:
+def load_config(config: Union[dict, Path, str]) -> Plugin:
     """Load configured plugin from config file/dict."""
     if isinstance(config, (Path, str)):
         with Path(config).open("r", encoding="utf-8") as file:
@@ -402,15 +255,7 @@ def load_config(config: Union[dict, Path, str]) -> Union[Plugin, ComputePlugin]:
         msg = "config must be a dict, str, or a path"
         raise TypeError(msg)
     io_keys_ = manifest_["_io_keys"]
-    class_ = manifest_["class"]
-    manifest_.pop("class", None)
-    if class_ == "Compute":
-        plugin_ = ComputePlugin(_uuid=False, **manifest_)
-    elif class_ == "WIPP":
-        plugin_ = Plugin(_uuid=False, **manifest_)
-    else:
-        msg = "Invalid value of class"
-        raise ValueError(msg)
+    plugin_ = Plugin(_uuid=False, **manifest_)
     for key, value_ in io_keys_.items():
         val = value_["value"]
         if val is not None:  # exclude those values not set

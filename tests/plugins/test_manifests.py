@@ -11,7 +11,7 @@ from polus.tools.plugins._plugins.manifests import (
     _load_manifest,
     validate_manifest,
 )
-from polus.tools.plugins._plugins.models import ComputeSchema, WIPPPluginManifest
+from polus.tools.plugins._plugins.models import WIPPPluginManifest
 
 RSRC_PATH = Path(__file__).parent.joinpath("resources")
 
@@ -195,7 +195,7 @@ def test_list_plugins():
 def test_manifests_plugindir(manifest):
     """Test manifests available in polus-plugins installation dir."""
     p = _get_path(manifest)
-    assert isinstance(validate_manifest(p), (WIPPPluginManifest, ComputeSchema))
+    assert isinstance(validate_manifest(p), WIPPPluginManifest)
 
 
 @pytest.mark.parametrize("type_", test_dict_load.values(), ids=test_dict_load.keys())
@@ -219,4 +219,4 @@ def test_bad_manifest(manifest):
 def test_good_manifest(manifest):
     """Test different manifests that all should pass validation."""
     p = RSRC_PATH.joinpath(manifest)
-    assert isinstance(validate_manifest(p), (WIPPPluginManifest, ComputeSchema))
+    assert isinstance(validate_manifest(p), WIPPPluginManifest)

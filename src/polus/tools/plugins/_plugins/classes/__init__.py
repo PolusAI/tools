@@ -2,7 +2,6 @@
 
 from polus.tools.plugins._plugins.classes.plugin_classes import (
     PLUGINS,
-    ComputePlugin,
     Plugin,
     _load_plugin,
     get_plugin,
@@ -16,7 +15,6 @@ from polus.tools.plugins._plugins.classes.plugin_classes import (
 
 __all__ = [
     "Plugin",
-    "ComputePlugin",
     "submit_plugin",
     "get_plugin",
     "refresh",
