@@ -1,5 +1,11 @@
 # ruff: noqa
-"""Script to convert all WIPP manifests to ICT."""
+"""Script to convert all WIPP manifests to ICT.
+
+Example:
+```bash
+python wipp_to_ict.py --repo /path/to/repo --all
+```
+"""
 
 # pylint: disable=W0718, W1203
 import logging
@@ -8,6 +14,8 @@ from pathlib import Path
 import typer
 from ict import ICT, validate
 from tqdm import tqdm
+
+from polus.tools.conversions import wipp_to_ict
 
 app = typer.Typer(help="Convert WIPP manifests to ICT.")
 ict_logger = logging.getLogger("ict")
@@ -74,9 +82,9 @@ def main(
         n = len(local_manifests)
         for manifest in tqdm(local_manifests):
             try:
-                ict_ = ICT.from_wipp(manifest)
-                yaml_path = ict_.save_yaml(manifest.with_name("ict.yaml"))
-                validate(yaml_path)
+                ict_ = wipp_to_ict(manifest, manifest.with_name("ict.yaml"))
+                # yaml_path = ict_.save_yaml(manifest.with_name("ict.yaml"))
+                validate(ict_[1])
                 converted += 1
 
             except BaseException as e:
