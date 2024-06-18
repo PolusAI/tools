@@ -7,17 +7,21 @@ import logging
 import pathlib
 import re
 from functools import singledispatch, singledispatchmethod
+from itertools import zip_longest
 from typing import Any, Optional, TypeVar, Union
 
 import fsspec
 from pydantic import BaseModel, Field, PrivateAttr
+from pydantic.dataclasses import dataclass
+from typing_extensions import Annotated
 
 from polus.tools.plugins._plugins._compat import PYDANTIC_V2
 
 if PYDANTIC_V2:
     from typing import Annotated
 
-    from pydantic import RootModel, StringConstraints, field_validator
+    from pydantic import RootModel, StringConstraints, field_validator, model_validator
+    from pydantic.functional_validators import AfterValidator
 else:
     from pydantic import constr, validator
 
@@ -270,73 +274,53 @@ class Input(IOBase):  # pylint: disable=R0903
             )
 
 
-def _check_version_number(value: Union[str, int]) -> bool:
-    if isinstance(value, int):
-        value = str(value)
-    if "-" in value:
-        value = value.split("-")[0]
-    if len(value) > 1 and value[0] == "0":
-        return False
-    return bool(re.match(r"^\d+$", value))
-
+SEMVER_REGEX = re.compile(
+    "^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\."
+    "(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]"
+    "\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*"
+    "[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>"
+    "[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
 
 if PYDANTIC_V2:
 
-    class Version(RootModel):
+    def semver_validator(ver: str) -> str:
+        """Validate a version against semver regex.
+
+        This validator is used by Pydantic in the `Version` object.
+        """
+        re_match = SEMVER_REGEX.match(ver)
+        if not re_match:
+            raise ValueError(
+                f"invalid version ({ver}). Version must follow semantic versioning (see semver.org)"
+            )
+        return ver
+
+    SemVerRoot = Annotated[str, AfterValidator(semver_validator)]
+
+    @dataclass
+    class Version:
         """SemVer object."""
 
-        root: str
+        _root: SemVerRoot
+        major: int = Field(..., init=False)
+        minor: int = Field(..., init=False)
+        patch: int = Field(..., init=False)
+        prerelease: str = Field(..., init=False)
+        buildmetadata: str = Field(..., init=False)
 
-        @field_validator("root")
-        @classmethod
-        def semantic_version(
-            cls,
-            value,
-        ) -> Any:  # ruff: noqa: ANN202, N805, ANN001
-            """Pydantic Validator to check semver."""
-            version = value.split(".")
-
-            assert (
-                len(version) == 3  # ruff: noqa: PLR2004
-            ), f"""
-            Invalid version ({value}). Version must follow
-            semantic versioning (see semver.org)"""
-            if "-" in version[-1]:  # with hyphen
-                idn = version[-1].split("-")[-1]
-                id_reg = re.compile("[0-9A-Za-z-]+")
-                assert bool(
-                    id_reg.match(idn),
-                ), f"""Invalid version ({value}).
-                Version must follow semantic versioning (see semver.org)"""
-
-            assert all(
-                map(_check_version_number, version),
-            ), f"""Invalid version ({value}).
-            Version must follow semantic versioning (see semver.org)"""
-            return value
-
-        @property
-        def major(self):
-            """Return x from x.y.z ."""
-            return int(self.root.split(".")[0])
-
-        @property
-        def minor(self):
-            """Return y from x.y.z ."""
-            return int(self.root.split(".")[1])
-
-        @property
-        def patch(self):
-            """Return z from x.y.z ."""
-            if not self.root.split(".")[2].isdigit():
-                msg = "Patch version is not a digit, comparison may not be accurate."
-                logger.warning(msg)
-                return self.root.split(".")[2]
-            return int(self.root.split(".")[2])
+        def __post_init__(self) -> None:
+            re_match = SEMVER_REGEX.match(self._root)
+            match_dict = re_match.groupdict()
+            self.major = int(match_dict["major"])
+            self.minor = int(match_dict["minor"])
+            self.patch = int(match_dict["patch"])
+            self.prerelease = match_dict["prerelease"]
+            self.buildmetadata = match_dict["buildmetadata"]
 
         def __str__(self) -> str:
             """Return string representation of Version object."""
-            return self.root
+            return self._root
 
         @singledispatchmethod
         def __lt__(self, other: Any) -> bool:
@@ -358,11 +342,11 @@ if PYDANTIC_V2:
 
         def __hash__(self) -> int:
             """Needed to use Version objects as dict keys."""
-            return hash(self.root)
+            return hash(self._root)
 
         def __repr__(self) -> str:
             """Return string representation of Version object."""
-            return self.root
+            return self._root
 
     @Version.__eq__.register(str)  # pylint: disable=no-member
     def _(self, other):
@@ -370,13 +354,11 @@ if PYDANTIC_V2:
 
     @Version.__lt__.register(str)  # pylint: disable=no-member
     def _(self, other):
-        v = Version(other)
-        return self < v
+        return self < Version(other)
 
     @Version.__gt__.register(str)  # pylint: disable=no-member
     def _(self, other):
-        v = Version(other)
-        return self > v
+        return self > Version(other)
 
 else:  # PYDANTIC_V1
 
@@ -395,25 +377,11 @@ else:  # PYDANTIC_V1
             value,
         ):  # ruff: noqa: ANN202, N805, ANN001
             """Pydantic Validator to check semver."""
-            version = value.split(".")
-
-            assert (
-                len(version) == 3  # ruff: noqa: PLR2004
-            ), f"""
-            Invalid version ({value}). Version must follow
-            semantic versioning (see semver.org)"""
-            if "-" in version[-1]:  # with hyphen
-                idn = version[-1].split("-")[-1]
-                id_reg = re.compile("[0-9A-Za-z-]+")
-                assert bool(
-                    id_reg.match(idn),
-                ), f"""Invalid version ({value}).
-                Version must follow semantic versioning (see semver.org)"""
-
-            assert all(
-                map(_check_version_number, version),
+            assert bool(
+                SEMVER_REGEX.match(value),
             ), f"""Invalid version ({value}).
             Version must follow semantic versioning (see semver.org)"""
+
             return value
 
         @property
@@ -429,11 +397,19 @@ else:  # PYDANTIC_V1
         @property
         def patch(self):
             """Return z from x.y.z ."""
-            if not self.version.split(".")[2].isdigit():
-                msg = "Patch version is not a digit, comparison may not be accurate."
-                logger.warning(msg)
-                return self.version.split(".")[2]
             return int(self.version.split(".")[2])
+
+        @property
+        def prerelease(self):
+            """Return q from x.y.z.q ."""
+            match = SEMVER_REGEX.match(self.version)
+            return match.group("prerelease")
+
+        @property
+        def buildmetadata(self):
+            """Return q from x.y.z.q ."""
+            match = SEMVER_REGEX.match(self.version)
+            return match.group("buildmetadata")
 
         def __str__(self) -> str:
             """Return string representation of Version object."""
@@ -482,19 +458,66 @@ def _(self, other):
         other.major == self.major
         and other.minor == self.minor
         and other.patch == self.patch
+        and other.prerelease == self.prerelease
+        and other.buildmetadata == self.buildmetadata
     )
+
+
+def prerelease_lt(pre1: str, pre2: str) -> bool:  # pylint: disable=R0911
+    """Check for precedence in prerelease versions.
+
+    Follows the algorithm defined in [semver.org](https://semver.org/#spec-item-11)
+    """
+    set_1 = pre1.split(".")
+    set_2 = pre2.split(".")
+    zipped = zip_longest(set_1, set_2)  # zip with `None` as default
+    for pair in zipped:
+        if pair[0] == pair[1]:
+            continue
+        is_digit_one = pair[0].isdigit() if pair[0] is not None else False
+        is_digit_two = pair[1].isdigit() if pair[1] is not None else False
+        if is_digit_one and is_digit_two:
+            if int(pair[0]) < int(pair[1]):
+                return True
+            return False  # pair[0] > pair[1]
+        if pair[0] is not None and pair[1] is None:  # pre1 is longer, allelseequal
+            return False
+        if is_digit_one and not is_digit_two and pair[1] is not None:
+            # numeric identifiers always have lower precedence
+            # than non-numeric identifiers
+            return True
+        if is_digit_two and not is_digit_one and pair[0] is not None:
+            return False
+        if pair[0] is None and pair[1] is not None:  # pre2 is longer, allelseequal
+            return True
+        if pair[0] < pair[1]:
+            return True
+        return False  # pair[0] > pair[1]
+    return False
+
+
+# Example: 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta
+# < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0.
 
 
 @Version.__lt__.register(Version)  # pylint: disable=no-member
 def _(self, other):
-    if other.major > self.major:
+    if self.major < other.major:  # X.y.z // P.q.r | X < P
         return True
-    if other.major == self.major:
-        if other.minor > self.minor:
+    if self.major == other.major:  # x.Y.z // x.Q.r
+        if self.minor < other.minor:  # | Y < Q
+            # if other.minor > self.minor:
             return True
-        if other.minor == self.minor:
-            if other.patch > self.patch:
+        if self.minor == other.minor:  # x.y.Z // x.y.R
+            # if other.patch > self.patch:
+            if self.patch < other.patch:  # | Z < R
                 return True
+            if self.patch == other.patch:  # x.y.z // x.y.z
+                if self.prerelease is not None:
+                    if other.prerelease is None:
+                        return True
+                    # other.prerelease is not None
+                    return prerelease_lt(self.prerelease, other.prerelease)
             return False
         return False
     return False

@@ -147,6 +147,8 @@ class Plugin(WIPPPluginManifest, BasePlugin):
 
         if not PYDANTIC_V2:  # pydantic V1
             data["version"] = cast_version(data["version"])
+        else:
+            data["version"] = Version(data["version"])
 
         super().__init__(**data)
 
@@ -387,6 +389,7 @@ def submit_plugin(
                 manifest_["version"] = manifest_["version"]["version"]
             else:  # PYDANTIC V2
                 manifest_ = json.loads(plugin.model_dump_json())
+                manifest_["version"] = str(plugin.version)
             json.dump(manifest_, file, indent=4)
 
     # Refresh plugins list
@@ -396,7 +399,7 @@ def submit_plugin(
 
 def get_plugin(
     name: str,
-    version: Optional[str] = None,
+    version: Optional[Union[str, Version]] = None,
 ) -> Union[Plugin, ComputePlugin]:
     """Get a plugin with option to specify version.
 
@@ -413,8 +416,11 @@ def get_plugin(
     if version is None:
         return _load_plugin(PLUGINS[name][max(PLUGINS[name])])
     if PYDANTIC_V2:
-        return _load_plugin(PLUGINS[name][Version(version)])
-    return _load_plugin(PLUGINS[name][Version(**{"version": version})])  # Pydantic V1
+        version_ = version if isinstance(version, Version) else Version(version)
+        return _load_plugin(PLUGINS[name][version_])
+    return _load_plugin(
+        PLUGINS[name][Version(**{"version": str(version)})]
+    )  # Pydantic V1
 
 
 def load_config(config: Union[dict, Path, str]) -> Union[Plugin, ComputePlugin]:
