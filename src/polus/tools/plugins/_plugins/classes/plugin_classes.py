@@ -93,6 +93,7 @@ def list_plugins() -> list:
 
 def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
     model_ = json.loads(plugin.model_dump_json())
+    model_["version"] = model_["version"]["_root"]
     model_["_io_keys"] = deepcopy(plugin._io_keys)  # type: ignore
     # iterate over I/O to convert to dict
     for io_name, io in model_["_io_keys"].items():
@@ -101,6 +102,8 @@ def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
         if io.type.value == "enum":
             model_["_io_keys"][io_name]["value"] = io.value.name  # str
     for inp in model_["inputs"]:
+        inp["value"] = None
+    for inp in model_["outputs"]:
         inp["value"] = None
     model_["class"] = class_
     return model_
@@ -188,11 +191,12 @@ class Plugin(WIPPPluginManifest, BasePlugin):
         """Set I/O parameters as attributes."""
         BasePlugin.__setattr__(self, name, value)
 
-    def save_config(self, path: Union[str, Path]) -> None:
+    def save_config(self, path: Union[str, Path]) -> Path:
         """Save manifest with configured I/O parameters to specified path."""
         with Path(path).open("w", encoding="utf-8") as file:
             json.dump(_get_config(self, "WIPP"), file, indent=4, default=str)
-        logger.debug(f"Saved config to {path}")
+        logger.debug(f"Saved config to {Path(path).absolute()}")
+        return Path(path).absolute()
 
     def __repr__(self) -> str:
         """Print plugin name and version."""

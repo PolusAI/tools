@@ -199,6 +199,10 @@ class BasePlugin:
                 o._fs = value
             return
 
+        if name == "class_name":
+            super().__setattr__(name, value)
+            return
+
         if name != "_io_keys" and hasattr(self, "_io_keys"):
             if name in self._io_keys:
                 logger.debug(
@@ -207,9 +211,9 @@ class BasePlugin:
                 self._io_keys[name].value = value
                 return
             msg = (
-                f"Attempting to set {name} in "
-                "{self.__class__.__name__} but "
-                "{{name}} is not a valid I/O parameter"
+                f"attempting to set {name} in "
+                f"{self.__class__.__name__} but "
+                f"{name} is not a valid I/O parameter"
             )
             raise IOKeyError(
                 msg,

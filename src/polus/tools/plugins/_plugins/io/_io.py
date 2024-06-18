@@ -18,6 +18,19 @@ from typing_extensions import Annotated
 
 logger = logging.getLogger("polus.plugins")
 
+
+class InvalidEnumValueError(Exception):
+    """Raise when an invalid enum value is passed."""
+
+
+class InvalidPathError(Exception):
+    """Raise when an invalid path is passed."""
+
+
+class DuplicateVersionFoundError(Exception):
+    """Raise when two equal versions found."""
+
+
 """
 Enums for validating plugin input, output, and ui components.
 """
@@ -113,8 +126,7 @@ class IOBase(BaseModel):  # pylint: disable=R0903
         default=None,
     )  # type checking is done at plugin level
 
-    def _validate(self) -> None:  # pylint: disable=R0912
-        value = self.value
+    def _validate(self, value) -> None:  # pylint: disable=R0912
 
         if value is None:
             if self.required:
@@ -135,22 +147,15 @@ class IOBase(BaseModel):  # pylint: disable=R0903
                     raise ValueError
 
             except KeyError:
-                logging.error(
-                    f"""
-                    Value ({value}) is not a valid value
-                    for the enum input ({self.name}).
-                    Must be one of {self.options['values']}.
-                    """,
+                msg = (
+                    f"value ({value}) is not a valid value "
+                    f"for the enum input ({self.name}). "
+                    f"Must be one of {self.options['values']}."
                 )
-                raise
+                logging.error(msg)
+                raise InvalidEnumValueError(msg)  # pylint: disable=W0707
         else:
-            if isinstance(self.type, (InputTypes, OutputTypes)):  # wipp
-                value = WIPP_TYPES[self.type](value)
-            else:
-                value = WIPP_TYPES[self.type.value](
-                    value,
-                )  # compute, type does not inherit from str
-
+            value = WIPP_TYPES[self.type](value)
             if isinstance(value, pathlib.Path):
                 value = value.absolute()
                 if self._fs:
@@ -161,8 +166,10 @@ class IOBase(BaseModel):  # pylint: disable=R0903
                         str(value),
                     ), f"{value} is not a valid directory"
                 else:
-                    assert value.exists(), f"{value} is invalid or does not exist"
-                    assert value.is_dir(), f"{value} is not a valid directory"
+                    if not value.exists():
+                        raise InvalidPathError(f"{value} is invalid or does not exist")
+                    if not value.is_dir():
+                        raise InvalidPathError(f"{value} is not a valid directory")
 
         super().__setattr__("value", value)
 
@@ -173,14 +180,14 @@ class IOBase(BaseModel):  # pylint: disable=R0903
             msg = f"Cannot set property: {name}"
             raise TypeError(msg)
 
-        super().__setattr__(name, value)
-
         if name == "value":
-            self._validate()
+            self._validate(value)
+            return
+        super().__setattr__(name, value)
 
 
 class Output(IOBase):  # pylint: disable=R0903
-    """Required until JSON schema is fixed."""
+    """Output for WIPP plugin."""
 
     name: Annotated[
         str,
@@ -195,10 +202,11 @@ class Output(IOBase):  # pylint: disable=R0903
         examples=["Output collection"],
         title="Output description",
     )
+    type: OutputTypes
 
 
 class Input(IOBase):  # pylint: disable=R0903
-    """Required until JSON schema is fixed."""
+    """Input for WIPP plugin."""
 
     name: Annotated[
         str,
@@ -402,10 +410,6 @@ def _(self, other):
     return other < self
 
 
-class DuplicateVersionFoundError(Exception):
-    """Raise when two equal versions found."""
-
-
 CWL_INPUT_TYPES = {
     "path": "Directory",  # always Dir? Yes
     "string": "string",
@@ -420,7 +424,7 @@ CWL_INPUT_TYPES = {
 
 
 def _type_in(inp: Input):
-    """Return appropriate value for `type` based on input type."""
+    """Return appropriate value for `type` based on input type for CWL."""
     val = inp.type.value
     req = "" if inp.required else "?"
 
