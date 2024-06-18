@@ -7,7 +7,6 @@ import typing
 from pydantic import ValidationError
 from tqdm import tqdm
 
-from polus.tools.plugins._plugins._compat import PYDANTIC_V2
 from polus.tools.plugins._plugins.classes import refresh, submit_plugin
 from polus.tools.plugins._plugins.gh import _init_github
 from polus.tools.plugins._plugins.io import Version
@@ -44,7 +43,7 @@ def update_polus_plugins(
 
             # Check that plugin version matches container version tag
             container_name, version = tuple(plugin.containerId.split(":"))
-            version = Version(version) if PYDANTIC_V2 else Version(version=version)
+            version = Version(version)
             organization, container_name = tuple(container_name.split("/"))
             if plugin.version != version:
                 msg = (

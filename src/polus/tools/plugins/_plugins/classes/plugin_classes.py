@@ -11,7 +11,6 @@ from typing import Any, Optional, Union
 
 from pydantic import ConfigDict
 
-from polus.tools.plugins._plugins._compat import PYDANTIC_V2
 from polus.tools.plugins._plugins.classes.plugin_base import BasePlugin
 from polus.tools.plugins._plugins.io._io import (
     DuplicateVersionFoundError,
@@ -30,7 +29,7 @@ from polus.tools.plugins._plugins.models import (
     PluginUIOutput,
     WIPPPluginManifest,
 )
-from polus.tools.plugins._plugins.utils import cast_version, name_cleaner
+from polus.tools.plugins._plugins.utils import name_cleaner
 
 logger = logging.getLogger("polus.plugins")
 PLUGINS: dict[str, dict] = {}
@@ -93,22 +92,14 @@ def list_plugins() -> list:
 
 
 def _get_config(plugin: Union["Plugin", "ComputePlugin"], class_: str) -> dict:
-    if PYDANTIC_V2:
-        model_ = json.loads(plugin.model_dump_json())
-        model_["_io_keys"] = deepcopy(plugin._io_keys)  # type: ignore
-    else:
-        # ignore mypy if pydantic < 2.0.0
-        model_ = plugin.dict()  # type: ignore
+    model_ = json.loads(plugin.model_dump_json())
+    model_["_io_keys"] = deepcopy(plugin._io_keys)  # type: ignore
     # iterate over I/O to convert to dict
     for io_name, io in model_["_io_keys"].items():
-        if PYDANTIC_V2:
-            model_["_io_keys"][io_name] = json.loads(io.model_dump_json())
-            # overwrite val if enum
-            if io.type.value == "enum":
-                model_["_io_keys"][io_name]["value"] = io.value.name  # str
-        elif io["type"] == "enum":  # pydantic V1
-            val_ = io["value"].name  # mapDirectory.raw
-            model_["_io_keys"][io_name]["value"] = val_.split(".")[-1]  # raw
+        model_["_io_keys"][io_name] = json.loads(io.model_dump_json())
+        # overwrite val if enum
+        if io.type.value == "enum":
+            model_["_io_keys"][io_name]["value"] = io.value.name  # str
     for inp in model_["inputs"]:
         inp["value"] = None
     model_["class"] = class_
@@ -128,15 +119,7 @@ class Plugin(WIPPPluginManifest, BasePlugin):
     """
 
     id: uuid.UUID  # noqa: A003
-    if PYDANTIC_V2:
-        model_config = ConfigDict(extra="allow", frozen=True)
-    else:
-
-        class Config:  # pylint: disable=R0903
-            """Config."""
-
-            extra = "allow"
-            allow_mutation = False
+    model_config = ConfigDict(extra="allow", frozen=True)
 
     def __init__(self, _uuid: bool = True, **data: dict) -> None:
         """Init a plugin object from manifest."""
@@ -145,15 +128,9 @@ class Plugin(WIPPPluginManifest, BasePlugin):
         else:
             data["id"] = uuid.UUID(str(data["id"]))  # type: ignore
 
-        if not PYDANTIC_V2:  # pydantic V1
-            data["version"] = cast_version(data["version"])
-        else:
-            data["version"] = Version(data["version"])
+        data["version"] = Version(data["version"])
 
         super().__init__(**data)
-
-        if not PYDANTIC_V2:  # pydantic V1
-            self.Config.allow_mutation = True
 
         self._io_keys = {i.name: i for i in self.inputs}
         self._io_keys.update({o.name: o for o in self.outputs})
@@ -232,15 +209,7 @@ class ComputePlugin(ComputeSchema, BasePlugin):
         save_manifest(path): save plugin manifest to specified path
     """
 
-    if PYDANTIC_V2:
-        model_config = ConfigDict(extra="allow", frozen=True)
-    else:  # pydantic V1
-
-        class Config:  # pylint: disable=R0903
-            """Config."""
-
-            extra = "allow"
-            allow_mutation = False
+    model_config = ConfigDict(extra="allow", frozen=True)
 
     def __init__(
         self,
@@ -300,7 +269,7 @@ class ComputePlugin(ComputeSchema, BasePlugin):
             for k, v in hardware_requirements.items():
                 data["pluginHardwareRequirements"][k] = v
 
-        data["version"] = cast_version(data["version"])
+        data["version"] = Version(data["version"])
         super().__init__(**data)
         self.Config.allow_mutation = True
         self._io_keys = {i.name: i for i in self.inputs}
@@ -384,12 +353,8 @@ def submit_plugin(
     org_path.mkdir(exist_ok=True, parents=True)
     if not org_path.joinpath(out_name).exists():
         with org_path.joinpath(out_name).open("w", encoding="utf-8") as file:
-            if not PYDANTIC_V2:  # pydantic V1
-                manifest_ = plugin.dict()  # type: ignore
-                manifest_["version"] = manifest_["version"]["version"]
-            else:  # PYDANTIC V2
-                manifest_ = json.loads(plugin.model_dump_json())
-                manifest_["version"] = str(plugin.version)
+            manifest_ = json.loads(plugin.model_dump_json())
+            manifest_["version"] = str(plugin.version)
             json.dump(manifest_, file, indent=4)
 
     # Refresh plugins list
@@ -415,12 +380,8 @@ def get_plugin(
     """
     if version is None:
         return _load_plugin(PLUGINS[name][max(PLUGINS[name])])
-    if PYDANTIC_V2:
-        version_ = version if isinstance(version, Version) else Version(version)
-        return _load_plugin(PLUGINS[name][version_])
-    return _load_plugin(
-        PLUGINS[name][Version(**{"version": str(version)})]
-    )  # Pydantic V1
+    version_ = version if isinstance(version, Version) else Version(version)
+    return _load_plugin(PLUGINS[name][version_])
 
 
 def load_config(config: Union[dict, Path, str]) -> Union[Plugin, ComputePlugin]:
@@ -460,13 +421,7 @@ def remove_plugin(plugin: str, version: Optional[Union[str, list[str]]] = None) 
             for version_ in version:
                 remove_plugin(plugin, version_)
             return
-        if not PYDANTIC_V2:  # pydantic V1
-            if not isinstance(version, Version):
-                version_ = cast_version(version)
-            else:
-                version_ = version
-        else:  # pydanitc V2
-            version_ = Version(version) if not isinstance(version, Version) else version
+        version_ = Version(version) if not isinstance(version, Version) else version
         path = PLUGINS[plugin][version_]
         path.unlink()
     refresh()

@@ -10,7 +10,7 @@ from typing import Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 from polus.tools.plugins._plugins.io import Input, Output, Version
-from polus.tools.plugins._plugins.models.pydanticv2.WIPPPluginSchema import (
+from polus.tools.plugins._plugins.models.WIPPPluginSchema import (
     ResourceRequirements,
     WippPluginManifest,
 )
@@ -19,7 +19,7 @@ from polus.tools.plugins._plugins.models.pydanticv2.WIPPPluginSchema import (
 class UI1(BaseModel):
     """Base class for UI items."""
 
-    key: str = Field(constr=r"^inputs.[a-zA-Z0-9][-a-zA-Z0-9]*$")
+    key: str = Field(pattern=r"^inputs.[a-zA-Z0-9][-a-zA-Z0-9]*$")
     title: str
     description: Optional[str] = None
     condition: Optional[str] = None

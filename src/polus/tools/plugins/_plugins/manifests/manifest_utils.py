@@ -11,12 +11,8 @@ import validators
 from pydantic import ValidationError, errors
 from tqdm import tqdm
 
-from polus.tools.plugins._plugins._compat import PYDANTIC_V2
 from polus.tools.plugins._plugins.io import Version
 from polus.tools.plugins._plugins.models import ComputeSchema, WIPPPluginManifest
-
-if not PYDANTIC_V2:
-    from polus.tools.plugins._plugins.utils import cast_version
 
 logger = logging.getLogger("polus.plugins")
 
@@ -87,12 +83,7 @@ def validate_manifest(
 ) -> Union[WIPPPluginManifest, ComputeSchema]:
     """Validate a plugin manifest against schema."""
     manifest = _load_manifest(manifest)
-    if not PYDANTIC_V2:  # Pydantic V1
-        manifest["version"] = cast_version(
-            manifest["version"],
-        )  # cast version to semver object
-    else:
-        manifest["version"] = Version(manifest["version"])  # noqa
+    manifest["version"] = Version(manifest["version"])  # noqa
     if "name" in manifest:
         name = manifest["name"]
     else:
