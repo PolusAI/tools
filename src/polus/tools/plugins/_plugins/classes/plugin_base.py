@@ -23,7 +23,6 @@ from polus.tools.plugins._plugins.io import (
     output_to_cwl,
     outputs_cwl,
 )
-from polus.tools.plugins._plugins.utils import name_cleaner
 
 logger = logging.getLogger("polus.plugins")
 
@@ -307,13 +306,13 @@ class BasePlugin:
             raise ValueError(msg)
 
         if not cwl_path:
-            _p = Path.cwd().joinpath(name_cleaner(self.name) + ".cwl")
+            _p = Path.cwd().joinpath(self.class_name + ".cwl")
             _cwl = self.save_cwl(_p)
         else:
             _cwl = self.save_cwl(cwl_path)
 
         if not io_path:
-            _p = Path.cwd().joinpath(name_cleaner(self.name) + ".yml")
+            _p = Path.cwd().joinpath(self.class_name + ".yml")
             self.save_cwl_io(_p)  # saves io to make it visible to user
         else:
             self.save_cwl_io(io_path)  # saves io to make it visible to user
