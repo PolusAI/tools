@@ -3,10 +3,7 @@
 from pathlib import Path
 from pprint import pprint
 
-from polus.tools.workflows import CommandLineTool
-from polus.tools.workflows import StepBuilder
-from polus.tools.workflows import WorkflowBuilder
-from polus.tools.workflows import run_cwl
+from polus.tools.workflows import CommandLineTool, StepBuilder, WorkflowBuilder, run_cwl
 from polus.tools.workflows.utils import configure_folders
 
 CWLTOOL_PATH = Path() / "cwl/rt_cetsa"  # clts we will use
@@ -18,16 +15,16 @@ WORKFLOW_OUTPUT_DIR = Path(
     "out_analysis",
 )  # relative path in the execution directory (cwd)
 WORKFLOW_INPUT_DIR = Path(
-    "/Users/antoinegerardin//Documents/data/rt-cetsa/20210318 LDHA compound plates/20210318 LDHA compound plate 1 6K cells",  # noqa: E501
+    "/Users/camilovelezr/Antoine/data/rt-cetsa/20210318 LDHA compound plates/20210318 LDHA compound plate 1 6K cells",  # noqa: E501
 )
-PLATEMAP_FILE = Path("/Users/antoinegerardin/RT-CETSA-Analysis/data/platemap.xlsx")
+PLATEMAP_FILE = Path("/Users/camilovelezr/antoine/RT-CETSA-Analysis/data/platemap.xlsx")
 
 if __name__ == "__main__":
     # collect clts
-    plate_extraction_cwl = "https://raw.githubusercontent.com/agerardin/image-tools/bf32f5c342ab32108e35eff8cb794b2f1f1e65e8/segmentation/rt-cetsa-plate-extraction-tool/rt_cetsa_plate_extraction.cwl"  # noqa: E501
-    intensity_extraction_cwl = "https://raw.githubusercontent.com/agerardin/image-tools/bf32f5c342ab32108e35eff8cb794b2f1f1e65e8/features/rt-cetsa-intensity-extraction-tool/rt_cetsa_intensity_extraction.cwl"  # noqa: E501
-    moltenprot_cwl = "https://raw.githubusercontent.com/agerardin/tabular-tools/feat/rt_cetsa_tools/regression/rt-cetsa-moltenprot-tool/rt_cetsa_moltenprot.cwl"  # noqa: E501
-    analysis_cwl = "https://raw.githubusercontent.com/agerardin/tabular-tools/feat/rt_cetsa_tools/regression/rt-cetsa-analysis-tool/rt_cetsa_analysis.cwl"  # noqa: E501
+    plate_extraction_cwl = "https://raw.githubusercontent.com/agerardin/image-tools/feat/v0.4/segmentation/rt-cetsa-plate-extraction-tool/rt_cetsa_plate_extraction.cwl"  # noqa: E501
+    intensity_extraction_cwl = "https://raw.githubusercontent.com/agerardin/image-tools/feat/v0.4/features/rt-cetsa-intensity-extraction-tool/rt_cetsa_intensity_extraction.cwl"  # noqa: E501
+    moltenprot_cwl = "https://raw.githubusercontent.com/agerardin/tabular-tools/feat/v0.4/regression/rt-cetsa-moltenprot-tool/rt_cetsa_moltenprot.cwl"  # noqa: E501
+    analysis_cwl = "https://raw.githubusercontent.com/agerardin/tabular-tools/feat/v0.4/regression/rt-cetsa-analysis-tool/rt_cetsa_analysis.cwl"  # noqa: E501
 
     clt_files = [
         plate_extraction_cwl,
