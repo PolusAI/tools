@@ -15,9 +15,9 @@ WORKFLOW_OUTPUT_DIR = Path(
     "out_analysis",
 )  # relative path in the execution directory (cwd)
 WORKFLOW_INPUT_DIR = Path(
-    "/Users/camilovelezr/Antoine/data/rt-cetsa/20210318 LDHA compound plates/20210318 LDHA compound plate 1 6K cells",  # noqa: E501
+    "/home/camilo/work/RT-CETSA-Data/240614_LDHA_01",  # noqa: E501
 )
-PLATEMAP_FILE = Path("/Users/camilovelezr/antoine/RT-CETSA-Analysis/data/platemap.xlsx")
+PLATEMAP_FILE = Path("/home/camilo/work/RT-CETSA-Analysis/data/platemap.xlsx")
 
 if __name__ == "__main__":
     # collect clts
