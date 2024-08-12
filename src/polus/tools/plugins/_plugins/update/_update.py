@@ -5,12 +5,20 @@ import re
 import typing
 
 from pydantic import ValidationError
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
-from polus.tools.plugins._plugins.classes import refresh, submit_plugin
+from polus.tools.plugins._plugins.classes import (
+    _private_submit_plugin_for_update,
+    _refresh,
+    submit_plugin,
+)
 from polus.tools.plugins._plugins.gh import _init_github
 from polus.tools.plugins._plugins.io import Version
-from polus.tools.plugins._plugins.manifests import _error_log, _scrape_manifests
+from polus.tools.plugins._plugins.manifests import (
+    InvalidManifestError,
+    _error_log,
+    _scrape_manifests,
+)
 
 logger = logging.getLogger("polus.plugins")
 
@@ -20,11 +28,21 @@ def update_polus_plugins(
     min_depth: int = 2,
     max_depth: int = 3,
 ) -> None:
-    """Scrape PolusAI GitHub repo and create local versions of Plugins."""
+    """Scrape PolusAI/image-tools GitHub repo and create local versions of Plugins found.
+
+    Args:
+        gh_auth:
+            GitHub authentication token, if empty will try
+            to get it from the environment variable GITHUB_AUTH,
+            otherwise will connect without authentication.
+        min_depth: Minimum depth to scrape, default is 2
+        max_depth: Maximum depth to scrape, default is 3
+
+    """
     logger.info("Updating polus plugins.")
     # Get all manifests
     valid, invalid = _scrape_manifests(
-        "polusai/polus-plugins",
+        "polusai/image-tools",
         _init_github(gh_auth),
         min_depth,
         max_depth,
@@ -36,55 +54,53 @@ def update_polus_plugins(
 
     for manifest in manifests:
         try:
-            plugin = submit_plugin(manifest)
+            plugin = _private_submit_plugin_for_update(manifest, return_plugin=True)
+            # plugin is of type Plugin since return_plugin = True
+            # but mypy does not recognize this
 
-            # Parsing checks specific to polus-plugins
-            error_list = []
-
-            # Check that plugin version matches container version tag
-            container_name, version = tuple(plugin.containerId.split(":"))
+            # # Check that plugin version matches container version tag
+            container_name, version = tuple(
+                plugin.containerId.split(":")  # type: ignore # pylint: disable=E1101
+            )
             version = Version(version)
             organization, container_name = tuple(container_name.split("/"))
-            if plugin.version != version:
-                msg = (
-                    f"containerId version ({version}) does not "
-                    f"match plugin version ({plugin.version})"
-                )
-                logger.error(msg)
-                error_list.append(ValueError(msg))
+            if plugin.version != version:  # type: ignore
+                raise InvalidManifestError("containerId")
 
             # Check to see that the plugin is registered to Labshare
             if organization not in ["polusai", "labshare"]:
-                msg = (
-                    "all polus plugin containers must be"
-                    " under the Labshare organization."
+                raise InvalidManifestError("organization")
+
+        except InvalidManifestError as im_err:
+            if im_err.__cause__ is not None:
+                logger.error(
+                    f"Validation error in {manifest['name']}: {im_err.__cause__}"
                 )
-                logger.error(msg)
-                error_list.append(ValueError(msg))
+            else:
+                if "name" not in manifest:
+                    logger.error(f"Validation error in {manifest}: no value for 'name'")
+                if "containerId" in im_err.args[0]:
+                    msg = (
+                        f"In {manifest['name']}:"
+                        f"containerId version ({version}) does not "  # type: ignore
+                        f"match plugin version ({plugin.version})"  # type: ignore
+                    )
+                    logger.error(msg)
+                if "organization" in im_err.args[0]:
+                    msg = (
+                        f"In {manifest['name']}:"
+                        "all polus plugin containers must be"
+                        " under the Labshare organization."
+                    )
+                    logger.error(msg)
 
-            # Checks for container name, they are somewhat related to our
-            # Jenkins build
-            if not container_name.startswith("polus"):
-                msg = "containerId name must begin with polus-"
-                logger.error(msg)
-                error_list.append(ValueError(msg))
+        except Exception as exc:  # pylint: disable=W0718
+            if "name" in manifest:
+                logger.error(f"Error in {manifest['name']}: {exc}")
+            else:
+                logger.error(f"Error in {manifest}: {exc}")
 
-            if not container_name.endswith("plugin"):
-                msg = "containerId name must end with -plugin"
-                logger.error(msg)
-                error_list.append(ValueError(msg))
-
-            if len(error_list) > 0:
-                raise ValidationError(error_list, plugin.__class__)
-
-        except ValidationError as val_err:
-            try:
-                _error_log(val_err, manifest, "update_polus_plugins")
-            except BaseException as e:  # pylint: disable=W0718
-                logger.exception(f"In {plugin.name}: {e}")
-        except BaseException as e:  # pylint: disable=W0718
-            logger.exception(f"In {plugin.name}: {e}")
-    refresh()
+    _refresh(supress_warnings=True)
 
 
 def update_nist_plugins(gh_auth: typing.Optional[str] = None) -> None:
@@ -107,8 +123,14 @@ def update_nist_plugins(gh_auth: typing.Optional[str] = None) -> None:
         )
 
         try:
-            submit_plugin(manifest)
+            _private_submit_plugin_for_update(manifest)
 
         except ValidationError as val_err:
-            _error_log(val_err, manifest, "update_nist_plugins")
-    refresh()
+            logger.error(f"Validation error in {manifest['name']}: {val_err}")
+
+        except InvalidManifestError as im_err:
+            logger.error(f"Validation error in {manifest['name']}: {im_err.__cause__}")
+
+        except Exception as exc:  # pylint: disable=W0718
+            logger.error(f"Error in {manifest['name']}: {exc}")
+    _refresh(supress_warnings=True)

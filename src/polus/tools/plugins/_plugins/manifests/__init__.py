@@ -1,4 +1,4 @@
-"""Initialize manifests module."""
+"""Manifests module."""
 
 from polus.tools.plugins._plugins.manifests.manifest_utils import (
     InvalidManifestError,

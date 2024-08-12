@@ -8,9 +8,9 @@ import pathlib
 import re
 from functools import singledispatch, singledispatchmethod
 from itertools import zip_longest
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, PrivateAttr, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 from pydantic.dataclasses import dataclass
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated
@@ -30,9 +30,6 @@ class DuplicateVersionFoundError(Exception):
     """Raise when two equal versions found."""
 
 
-"""
-Enums for validating plugin input, output, and ui components.
-"""
 WIPP_TYPES = {
     "collection": pathlib.Path,
     "pyramid": pathlib.Path,
@@ -138,7 +135,7 @@ class IOBase(BaseModel):  # pylint: disable=R0903
         """Set I/O attributes."""
         if name not in ["value", "id"]:
             # Don't permit any other values to be changed
-            msg = f"Cannot set property: {name}"
+            msg = f"cannot set property: {name}"
             raise TypeError(msg)
 
         if name == "value":
@@ -196,12 +193,11 @@ class Input(IOBase):  # pylint: disable=R0903
         super().__init__(**data)
 
         if self.description is None:
-            logger.warning(
-                f"""
-                The input ({self.name}) is missing the description field.
+            msg = f"""
+                the input ({self.name}) is missing the description field.
                 This field is not required but should be filled in.
-                """,
-            )
+                """
+            logger.warning(msg)
 
 
 SEMVER_REGEX = re.compile(
@@ -278,6 +274,18 @@ class Version:
     @singledispatchmethod
     def __eq__(self, other: Any) -> bool:
         """Compare if two Version objects are equal."""
+        msg = "invalid type for comparison."
+        raise TypeError(msg)
+
+    @singledispatchmethod
+    def __le__(self, other: Any) -> bool:
+        """Compare if Version is less than or equal to another."""
+        msg = "invalid type for comparison."
+        raise TypeError(msg)
+
+    @singledispatchmethod
+    def __ge__(self, other: Any) -> bool:
+        """Compare if Version is greater than or equal to another."""
         msg = "invalid type for comparison."
         raise TypeError(msg)
 
@@ -379,6 +387,26 @@ def _(self, other):
 @Version.__gt__.register(Version)  # pylint: disable=no-member
 def _(self, other):
     return other < self
+
+
+@Version.__le__.register(str)  # pylint: disable=no-member
+def _(self, other):
+    return self < Version(other) or self == Version(other)
+
+
+@Version.__le__.register(Version)  # pylint: disable=no-member
+def _(self, other):
+    return self < other or self == other
+
+
+@Version.__ge__.register(str)  # pylint: disable=no-member
+def _(self, other):
+    return self > Version(other) or self == Version(other)
+
+
+@Version.__ge__.register(Version)  # pylint: disable=no-member
+def _(self, other):
+    return self > other or self == other
 
 
 CWL_INPUT_TYPES = {
