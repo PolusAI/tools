@@ -25,6 +25,7 @@ rich = "^13.7.0"
 tqdm = "^4.65.0"
 validators = "^0.22.0"
 xmltodict = "^0.13.0"
+packaging = "^24.1"
 
 [tool.poetry.group.dev.dependencies]
 python = ">=3.9, <3.12"

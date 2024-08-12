@@ -10,6 +10,7 @@ from functools import singledispatch, singledispatchmethod
 from itertools import zip_longest
 from typing import Any, Optional, Union
 
+from packaging.version import Version as PyPIVersion
 from pydantic import BaseModel, Field, StringConstraints
 from pydantic.dataclasses import dataclass
 from pydantic.functional_validators import AfterValidator
@@ -407,6 +408,11 @@ def _(self, other):
 @Version.__ge__.register(Version)  # pylint: disable=no-member
 def _(self, other):
     return self > other or self == other
+
+
+def _semver_to_pypi(ver: Version) -> PyPIVersion:
+    """Convert SemVer to PyPI version."""
+    return PyPIVersion(ver._root)  # pylint: disable=W0212
 
 
 CWL_INPUT_TYPES = {

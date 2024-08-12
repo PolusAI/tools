@@ -1,9 +1,11 @@
 """Test Version object and cast_version utility function."""
 
 import pytest
+from packaging.version import Version as PyPIVersion
 from pydantic import ValidationError
 
 from polus.tools.plugins._plugins.io import Version
+from polus.tools.plugins._plugins.io._io import _semver_to_pypi
 
 GOOD_VERSIONS = [
     "1.2.3",
@@ -22,6 +24,14 @@ BAD_VERSIONS = ["02.2.3", "002.2.3", "1.2", "1.0", "1.03.2", "23.3.03", "d.2.4"]
 def test_version(ver):
     """Test Version pydantic model."""
     assert isinstance(Version(ver), Version)
+
+
+@pytest.mark.parametrize("ver", GOOD_VERSIONS, ids=GOOD_VERSIONS)
+def test_version_pypi_1(ver):
+    """Test Version pypi."""
+    semver = Version(ver)
+    pypi = _semver_to_pypi(semver)
+    assert isinstance(pypi, PyPIVersion)
 
 
 @pytest.mark.parametrize("ver", BAD_VERSIONS, ids=BAD_VERSIONS)
@@ -148,6 +158,59 @@ def test_version_good_1(ver):
     """
     v = Version(ver)
     assert isinstance(v, Version)
+
+
+@pytest.mark.parametrize(
+    "ver",
+    [
+        "1.0.0",
+        "1.0.1",
+        "1.2.4",
+        "0.2.3",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "0.4.1-rc.1",
+        "12.21.23-beta.12",
+        "1.10.12-alpha.1+2322",
+    ],
+    ids=[
+        "1.0.0",
+        "1.0.1",
+        "1.2.4",
+        "0.2.3",
+        "12.2.3",
+        "0.2.1-alpha",
+        "1.2.3-beta",
+        "1.10.0",
+        "1.10.2-alpha+232",
+        "0.4.1-rc.1",
+        "12.21.23-beta.12",
+        "1.10.12-alpha.1+2322",
+    ],
+)
+def test_version_good_1_pypi(ver):
+    """Test Correct Versions to PyPI."""
+
+    v = Version(ver)
+    pypi = _semver_to_pypi(v)
+    assert isinstance(pypi, PyPIVersion)
+
+
+def test_rc_to_pypi():
+    """Test rc version to pypi."""
+    v = Version("0.4.1-rc1")
+    pypi = _semver_to_pypi(v)
+    assert str(pypi) == "0.4.1rc1"
+
+
+def test_dev_to_pypi():
+    """Test dev version to pypi."""
+    v = Version("0.4.1-dev.1")
+    pypi = _semver_to_pypi(v)
+    assert str(pypi) == "0.4.1.dev1"
 
 
 @pytest.mark.parametrize(
