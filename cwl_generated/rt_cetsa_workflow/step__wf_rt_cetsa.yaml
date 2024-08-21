@@ -1,0 +1,21 @@
+wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___filePattern: '{index:d+}.tif'
+wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___inpDir:
+  class: Directory
+  location: /Users/antoinegerardin/Documents/data/rt-cetsa/20210318 LDHA compound
+    plates/20210318 LDHA compound plate 1 6K cells
+wf_rt_cetsa___0__step__rt_cetsa_plate_extraction___outDir:
+  class: Directory
+  location: 0__step__rt_cetsa_plate_extraction__outDir
+wf_rt_cetsa___1__step__rt_cetsa_intensity_extraction___filePattern: '{index:d+}.ome.tif'
+wf_rt_cetsa___1__step__rt_cetsa_intensity_extraction___outDir:
+  class: Directory
+  location: 1__step__rt_cetsa_intensity_extraction__outDir
+wf_rt_cetsa___2__step__rt_cetsa_moltenprot___outDir:
+  class: Directory
+  location: 2__step__rt_cetsa_moltenprot__outDir
+wf_rt_cetsa___3__step__rt_cetsa_analysis___outDir:
+  class: Directory
+  location: out_analysis
+wf_rt_cetsa___3__step__rt_cetsa_analysis___platemap:
+  class: File
+  location: /Users/antoinegerardin/RT-CETSA-Analysis/data/platemap.xlsx

@@ -738,7 +738,7 @@ class CommandLineTool(Process):
     outputs: list[CommandOutputParameter]
     class_: str = Field(alias="class", default="CommandLineTool")
 
-    base_command: Optional[str] = Field(None, alias="baseCommand")
+    base_command: Optional[Union[str, list[str]]] = Field(None, alias="baseCommand")
     stdin: Optional[str] = None
     stderr: Optional[str] = None
     stdout: Optional[str] = None
