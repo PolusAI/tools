@@ -12,7 +12,6 @@ import logging
 from pathlib import Path
 
 import typer
-from ict import ICT, validate
 from tqdm import tqdm
 
 from polus.tools.conversions import wipp_to_ict
@@ -67,6 +66,7 @@ def main(
     local_manifests = [
         x for x in local_manifests if not any(ig in str(x) for ig in ignore_list)
     ]
+    logger.info(f"manifests: {local_manifests}")
     problems = {}
     converted = 0
     if not all_ and name is None:
@@ -82,9 +82,7 @@ def main(
         n = len(local_manifests)
         for manifest in tqdm(local_manifests):
             try:
-                ict_ = wipp_to_ict(manifest, manifest.with_name("ict.yaml"))
-                # yaml_path = ict_.save_yaml(manifest.with_name("ict.yaml"))
-                validate(ict_[1])
+                wipp_to_ict(manifest, manifest.with_name("ict.yaml"))
                 converted += 1
 
             except BaseException as e:
@@ -93,9 +91,7 @@ def main(
         n = 1
         for manifest in [x for x in local_manifests if name in str(x)]:
             try:
-                ict_ = ICT.from_wipp(manifest)
-                yaml_path = ict_.save_yaml(manifest.with_name("ict.yaml"))
-                validate(yaml_path)
+                wipp_to_ict(manifest, manifest.with_name("ict.yaml"))
                 converted += 1
 
             except BaseException as e:
